@@ -562,7 +562,7 @@ module AboutMusicFiles =
                 let jsonPath  = argv.[1]
                 MakePlaylistOfNewlyRegisteredSongs jsonPath
             //*)
-            MakePlaylistOfNewlyRegisteredSongs FileName_NewlySongsDataJson
+            //MakePlaylistOfNewlyRegisteredSongs FileName_NewlySongsDataJson
         | 3 ->
             // テキストファイルにエクスポート処理
             let printUsage = fun () -> printfn "usage: this 3 outPath"

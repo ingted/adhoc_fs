@@ -13,11 +13,6 @@ open AboutMusicFiles
 open AboutMtg
 open AboutSomething
 open Uedai.Utilities
-open Uedai.Utilities.Seq.SeqExtension
-
-open Microsoft.FSharp.Collections
-open Microsoft.FSharp.Reflection
-open System.Reflection
 
 open FParsec
 

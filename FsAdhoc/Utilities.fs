@@ -3,6 +3,7 @@
 // おせっかいな関数群
 
 open System
+open System.IO
 open System.Collections.Generic
 open System.Linq
 
@@ -13,6 +14,8 @@ open Microsoft.FSharp.Collections
 
     [<AutoOpen>]
     module Misc =
+        /// constant function
+        let inline konst x _ = x
         ///flip applying order of 2 arguments
         let inline flip f x y = f y x
         ///apply f to a value x; then return x
@@ -46,6 +49,12 @@ open Microsoft.FSharp.Collections
         ///expands KeyValuePair<_,_> to a tuple (key, value)
         let (|KeyValuePair|) (kv : KeyValuePair<'K, 'V>) =
             (kv.Key, kv.Value)
+
+    module Math =
+        let numDigits n =
+            if n = 0
+                then 1
+                else n |> Math.Abs |> float |> Math.Log10 |> int |> (+) 1
 
     module Tuple =
         let fst'3 (t0, t1, t2) = t0
@@ -510,6 +519,15 @@ open Microsoft.FSharp.Collections
     module Encoding =
         let Shift_JIS = Text.Encoding.GetEncoding("Shift_JIS")
 
+    module Path =
+        // ファイル名に使用できない文字をエスケープする
+        let Escape escaper path =
+            let rec esc path c =
+                path |> Str.replace (string c) (escaper c)
+                
+            Path.GetInvalidFileNameChars()
+            |> Array.fold esc path
+
     module Console =
         let ReadCommandLine argv =
             if argv |> Array.length > 0 then
@@ -519,6 +537,7 @@ open Microsoft.FSharp.Collections
                 let commandLine = Console.ReadLine()
                 commandLine.Split ([|' '|], StringSplitOptions.RemoveEmptyEntries)
 
+        // y/n 質問
         let rec ReadYesNo() =
             let s = Console.ReadLine()
             if s |> Str.isNullOrEmpty then
@@ -526,6 +545,28 @@ open Microsoft.FSharp.Collections
             else
                 s.[0] |> Char.ToLower |> ((=) 'y')
 
+        /// シーケンスのどの1つかをユーザに選択させる
+        let inline AskWhichOne msg s =
+            let len = s |> Seq.length
+            s |> Seq.iteri (fun i e ->
+                printfn "%0*d  %s" (Math.numDigits len) i (string e)
+                )
+            printfn "%s" msg
+
+            let rec askLoop kont =
+                printf "Input a number 0~%d or '!' to skip: " (len - 1)
+                let answer = Console.ReadLine()
+                if answer = "!"
+                    then kont None
+                    else
+                        match Int32.TryParse answer |> Option.trialResult with
+                        | Some n when 0 <= n && n < len -> kont <| Some n
+                        | _ ->
+                            askLoop kont
+
+            askLoop <| Option.map (fun i -> (i, s |> Seq.nth i))
+
+        /// 入力を行区切りですべて取り出す
         let rec ReadLines() =
             Seq.unfold (fun() ->
                 let s = Console.ReadLine()

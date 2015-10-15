@@ -29,7 +29,7 @@ module AboutMusicFiles =
             let Value = app
             let AllTracks   = lazy app.getAll()
             let TemporaryPL = lazy app.playlistCollection.getByName("#_").[0]
-        
+
             let (* const *) DateFormat = "yyyy/MM/dd HH:mm:ss"
 
         // Media 
@@ -266,49 +266,60 @@ module AboutMusicFiles =
         legalExts |> Seq.contains ext
 
     /// フォルダーにあるそれっぽいファイルの、タグとファイル名を書き換える
-    // それっぽいとは、ファイル名に曲名を含んでいること。曲名の間に包含関係があると困った事態になる。
     let internal CommitTagsToFiles dirPath songsData =
-        let dir = Directory.GetFiles dirPath
-        songsData |> List.iter (fun songData ->
-            let songFiles =
-                dir |> Array.filter (fun fileName ->
-                  fileName.Contains(songData.Title)
-                  && (fileName |> Path.GetExtension |> isMusicFileExt))
-            songFiles |> Array.iter (fun fileName ->
-                try
-                    let tagInfo = loadMP3Tag fileName
-                    let album =
-                        if songData.Composer = songData.Writer
-                            then songData.Composer
-                            else sprintf "c:%s/w:%s" songData.Composer songData.Writer
+        let fileNames = Directory.GetFiles dirPath
+        
+        let filterFiles songData (files: string[]) =
+            files
+            |> Array.filter (fun fileName ->
+                  fileName.Contains (songData.Title))
+            |> (fun files ->
+                match files |> Seq.length with
+                | 0 -> printfn "Not files found of '%s'." (songData.Title); None
+                | 1 -> files |> Seq.head |> Some
+                | _ -> files
+                    |> Console.AskWhichOne ("Which is the file of '" + songData.Title + "'?")
+                    |> Option.map snd
+                )
 
-                    tagInfo.Title <- songData.Title
-                    tagInfo.Album <- album
-                    tagInfo.Artist <- songData.Vocal
-                    tagInfo.TrackNumber <- songData.TrackNumber
+        let commitTag songData fileName =
+            try
+                let tagInfo = loadMP3Tag fileName
+                let album =
+                    if songData.Composer = songData.Writer
+                        then songData.Composer
+                        else sprintf "c:%s/w:%s" songData.Composer songData.Writer
+
+                tagInfo.Title <- songData.Title
+                tagInfo.Album <- album
+                tagInfo.Artist <- songData.Vocal
+                tagInfo.TrackNumber <- songData.TrackNumber
                     
-                    tagInfo |> removeMeaninglessGenre
-                    tagInfo.SaveUnicode()
+                tagInfo |> removeMeaninglessGenre
+                tagInfo.SaveUnicode()
 
-                    // 長い曲名は手動で再登録する必要があるので警告する
-                    if songData.Title.Length >= 15 then
-                        printfn "Maybe 「%s」's title too long." songData.Title
-                    if album.Length >= 15 then
-                        printfn "Maybe album name 「%s」 is too long." album
-                with
-                    // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
-                    | :? IO.FileNotFoundException ->
-                        printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
-                    | _ -> reraise()
+                // 長い曲名は手動で再登録する必要があるので警告する
+                if songData.Title.Length >= 15 then
+                    printfn "Maybe 「%s」's title is too long." songData.Title
+                if album.Length >= 15 then
+                    printfn "Maybe album name 「%s」 is too long." album
+
+                // ファイル名を曲名にする
+                let newFileName =
+                    Path.Escape (konst "_") (songData.Title) + Path.GetExtension fileName
+                File.Move (fileName, newFileName)
+
+            with
+                // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
+                | :? IO.FileNotFoundException ->
+                    printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
+                | _ -> reraise()
+
+        songsData |> List.iter (fun songData ->
+            fileNames
+            |> filterFiles songData
+            |> Option.iter (commitTag songData)
             )
-
-            // ファイルが1つだけなら確定とみなして、ファイル名を曲名にする (記号等が含まれていると例外)
-            match songFiles with
-            | [| theFile |] ->
-                File.Move(theFile, songData.Title + Path.GetExtension(theFile))
-                dir |> Array.iteri (fun i fileName -> if fileName = theFile then dir.[i] <- "")
-            | _ -> printfn "No or multiple files are found as instance of %s" songData.Title
-        )
 
     /// 曲名の順番を記録したファイルを出力する
     let internal SaveSortOfSongs fileName songsData =
@@ -527,10 +538,10 @@ module AboutMusicFiles =
                     let songsData = LoadAndSaveSongDataFromLyrics lyricsPath jsonPath
                     MoveMoviesOfSongsToSubDir (moviesDir, String_Today, songsData)
             //*)
-            //let songsData = AboutMusicFiles.LoadAndSaveSongDataFromLyrics FileName_TemporaryLyrics FileName_NewlySongsDataJson
-            //AboutMusicFiles.MoveMoviesOfSongsToSubDir (Path_SourceMovies, "tmp", songsData)
+            //let songsData = LoadAndSaveSongDataFromLyrics FileName_TemporaryLyrics FileName_NewlySongsDataJson
+            //MoveMoviesOfSongsToSubDir (Path_SourceMovies, "tmp", songsData)
         | 1 ->
-            (*
+            //(*
             // mp3 タグ編集処理
             let printUsage = fun () -> printfn "usage: this 1 musicDir jsonPath"
             if argv.Length < 3 then
@@ -538,9 +549,9 @@ module AboutMusicFiles =
             else
                 let musicsDir = argv.[1]
                 let jsonPath  = argv.[2]
-                AboutMusicFiles.MP3RegisterationSupport(musicsDir, jsonPath)
+                MP3RegisterationSupport(musicsDir, jsonPath)
             //*)
-            MP3RegisterationSupport(Path_RegisteratingMusicFiles, FileName_NewlySongsDataJson)
+            //MP3RegisterationSupport(Path_RegisteratingMusicFiles, FileName_NewlySongsDataJson)
         | 2 ->
             // 新曲プレイリスト生成
             //(*

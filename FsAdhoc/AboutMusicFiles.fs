@@ -258,11 +258,6 @@ module AboutMusicFiles =
         
     //-------------------------------------------
 
-    let internal loadMP3Tag fileName =
-        MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
-        MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
-        MP3Infp.LoadTag(fileName)
-
     let internal removeMeaninglessGenre (tagInfo : TagInfo) =
         if tagInfo.Genre |> (fun s -> Str.isNullOrEmpty s || (s = "Other") || (s = "ジャンル情報なし")) then
             tagInfo.Genre <- null
@@ -289,20 +284,32 @@ module AboutMusicFiles =
 
         let commitTag songData fileName =
             try
-                let tagInfo = loadMP3Tag fileName
                 let album =
                     if songData.Composer = songData.Writer
                         then songData.Composer
                         else sprintf "c:%s/w:%s" songData.Composer songData.Writer
 
-                tagInfo.Title <- songData.Title
-                tagInfo.Album <- album
-                tagInfo.Artist <- songData.Vocal
-                tagInfo.TrackNumber <- songData.TrackNumber
-                //tagInfo.ReleaseYear <- songData.ReleaseYear
+                let setTag (tagInfo: #TagInfo) =
+                    tagInfo.Title <- songData.Title
+                    tagInfo.Album <- album
+                    tagInfo.Artist <- songData.Vocal
+                    tagInfo.TrackNumber <- songData.TrackNumber
+                    //tagInfo.ReleaseYear <- songData.ReleaseYear
+                    tagInfo |> removeMeaninglessGenre
+                    tagInfo.SaveUnicode()
 
-                tagInfo |> removeMeaninglessGenre
-                tagInfo.SaveUnicode()
+                match fileName |> Path.GetExtension |> Str.toLower with
+                | ".mp3" ->
+                    MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
+                    MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
+                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (fileName)
+                    tagInfo.Composer <- songData.Composer
+                    setTag tagInfo
+                | ".m4a" ->
+                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> (fileName)
+                    tagInfo.Composer <- songData.Composer
+                    setTag tagInfo
+                | _ -> setTag <| MP3Infp.LoadTag (fileName)
 
                 // 長い曲名は手動で再登録する必要があるので警告する
                 if songData.Title.Length >= 15 then
@@ -317,8 +324,10 @@ module AboutMusicFiles =
 
             with
                 // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
-                | :? IO.FileNotFoundException ->
+                | :? IO.FileNotFoundException as e ->
                     printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
+                | :? MP3Infp.Mp3infpException as e ->
+                    printfn "Error while MP3 tag editting:\r\nfileName: %s\r\nmsg: %s" fileName (e.Message)
                 | _ -> reraise()
 
         songsData |> List.iter (fun songData ->
@@ -530,8 +539,8 @@ module AboutMusicFiles =
                         (num, titles.[num - 1])
                         ))
                 |> Option.map (fun (num, title) ->
-                    let tagInfo = loadMP3Tag fileName
-                    assert (tagInfo.TrackNumber = string (num))
+                    let tagInfo = MP3Infp.LoadTag (fileName)
+                    assert (tagInfo.TrackNumber = string num)
                     let destFilePath =
                         Path.Combine(dir,
                             (Str.format "{0:D2}" [num]) + " " + title + ".mp3"
@@ -539,7 +548,6 @@ module AboutMusicFiles =
                     printfn "%s:\n  移動 %s\n  タイトル変更 %s -> %s" fileName destFilePath tagInfo.Title title
                     (fun() -> 
                         tagInfo.Title <- title
-                        tagInfo |> removeMeaninglessGenre
                         tagInfo.SaveUnicode()
                         File.Move(Path.Combine(dir, fileName), destFilePath)
                         )

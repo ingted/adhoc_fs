@@ -230,15 +230,9 @@ open Microsoft.FSharp.Reflection
         let takeTuple3 self = (List.nth self 0), (List.nth self 1), (List.nth self 2)
 
     module Array =
-        let ofCol' getCount getItem o =
-            [| for i in 0..((o |> getCount) - 1) -> ((o |> getItem) i) |]
-        // ex. pl |> Array.ofCol (fun pl -> pl.count) (fun pl i -> pl.Item i)
-
-        (* // System.Linq にある .Cast 拡張メソッドみたいなもの (なぜ動かないか不明)
-        let inline ofCol (o : ^T when ^T : (member Item : (int -> ^U)) and ^T : (member Count : int)) : ^U[] =
-            [| for i in 0..(o.Count - 1) do
-                yield (o.Item i) |]
-        //*)
+        let inline ofCol< ^T, ^U when ^T: (member Count: int) and ^T: (member Item: int -> ^U)> (o: ^T): ^U[] =
+            [| for i in 0..((^T: (member Count: int) o) - 1) do
+                yield (^T: (member Item: int -> ^U) (o, i)) |]
 
         let take n a =
             Array.sub a 0 n
@@ -543,26 +537,29 @@ open Microsoft.FSharp.Reflection
             else
                 s.[0] |> Char.ToLower |> ((=) 'y')
 
-        /// シーケンスのどの1つかをユーザに選択させる
+        /// 列のどの1つかをユーザに選択させる
         let inline AskWhichOne msg s =
-            let len = s |> Seq.length
-            s |> Seq.iteri (fun i e ->
-                printfn "%0*d  %s" (Math.numDigits len) i (string e)
-                )
-            printfn "%s" msg
+            match s |> Seq.length with
+            | 0 -> None
+            | 1 -> Some (0, s |> Seq.head)
+            | len ->
+                s |> Seq.iteri (fun i e ->
+                    printfn "%0*d  %s" (Math.numDigits len) i (string e)
+                    )
+                printfn "%s" msg
 
-            let rec askLoop kont =
-                printf "Input a number 0~%d or '!' to skip: " (len - 1)
-                let answer = Console.ReadLine()
-                if answer = "!"
-                    then kont None
-                    else
-                        match Int32.TryParse answer |> Option.trialResult with
-                        | Some n when 0 <= n && n < len -> kont <| Some n
-                        | _ ->
-                            askLoop kont
+                let rec askLoop kont =
+                    printf "Input a number 0~%d or '!' to skip: " (len - 1)
+                    let answer = Console.ReadLine()
+                    if answer = "!"
+                        then kont None
+                        else
+                            match Int32.TryParse answer |> Option.trialResult with
+                            | Some n when 0 <= n && n < len -> kont <| Some n
+                            | _ ->
+                                askLoop kont
 
-            askLoop <| Option.map (fun i -> (i, s |> Seq.nth i))
+                askLoop <| Option.map (fun i -> (i, s |> Seq.nth i))
 
         /// 入力を行区切りですべて取り出す
         let rec ReadLines() =

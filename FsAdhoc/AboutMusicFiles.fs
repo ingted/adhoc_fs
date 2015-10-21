@@ -7,6 +7,7 @@ open System.Linq
 open Microsoft.FSharp
 open Microsoft.FSharp.Reflection
 open System.Reflection
+open System.Collections.Generic
 
 open Basis.Core
 open System.Runtime.Serialization
@@ -30,14 +31,19 @@ module AboutMusicFiles =
             let AllTracks   = lazy app.getAll()
             let TemporaryPL = lazy app.playlistCollection.getByName("#_").[0]
 
-            let (* const *) DateFormat = "yyyy/MM/dd HH:mm:ss"
+            let DateFormat = "yyyy/MM/dd HH:mm:ss"
+
+        // Playlist
+        type IWMPPlaylist with
+            member this.ToSeq =
+                seq { for i in 0..(this.count - 1) -> this.Item i }
 
         // Media 
         type IWMPMedia with
             member this.Item (attr : string) =
                 this.getItemInfo attr
             member this.AcquisitionTime =
-                DateTime.Parse(this.["AcquisitionTime"])
+                DateTime.Parse (this.["AcquisitionTime"])
             member this.LastPlayedTime =
                 match this.["UserLastPlayedTime"] with
                 | null | ""
@@ -273,13 +279,12 @@ module AboutMusicFiles =
             files
             |> Array.filter (fun fileName ->
                   fileName.Contains (songData.Title))
-            |> (fun files ->
-                match files |> Seq.length with
-                | 0 -> printfn "Not files found of '%s'." (songData.Title); None
-                | 1 -> files |> Seq.head |> Some
-                | _ -> files
-                    |> Console.AskWhichOne ("Which is the file of '" + songData.Title + "'?")
-                    |> Option.map snd
+            |> Console.AskWhichOne ("Which is the file of '" + songData.Title + "'?")
+            |> (function
+                | Some (_, fileName) -> Some fileName
+                | None ->
+                    printfn "File of '%s' isn't found or skipped." (songData.Title)
+                    None
                 )
 
         let commitTag songData fileName =
@@ -355,6 +360,77 @@ module AboutMusicFiles =
 
     //-------------------------------------------
 
+    let ChangeTagEncoding filePath =
+        match filePath |> Path.GetExtension |> Str.toLower with
+        | ".mp3" ->
+            let hasID3v1 = MP3Infp.ContainsMP3Tag (filePath, MP3Infp.MP3TagType.ID3v1)
+            let hasID3v2 = MP3Infp.ContainsMP3Tag (filePath, MP3Infp.MP3TagType.ID3v2)
+
+            // ID3v1 -> ID3v2 に移動
+            if hasID3v1 && not hasID3v2 then
+                MP3Infp.AddMP3Tag (filePath, MP3Infp.MP3TagType.ID3v2) |> ignore
+                let tiV1 = MP3Infp.LoadTag<TagInfo.MP3_ID3v1> (filePath)
+                let tiV2 = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (filePath)
+                TagInfo.Copy (tiV1, tiV2)
+
+                // ID3v1 タグにない情報を WMP ライブラリから取得
+                let pl = Wmp.Value.mediaCollection.getByName (tiV2.Title)
+                pl.ToSeq
+                |> Console.AskWhichOne
+                    (sprintf "Which file is of '%s' in %s?" tiV2.Title filePath)
+                |> Option.iter (fun (i, track) ->
+                    tiV2.Composer <- track.["Composer"]
+                    )
+
+                tiV2.SaveUnicode ()
+
+            else if hasID3v2 then
+                let tiV2 = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (filePath)
+                tiV2.SaveUnicode ()
+
+            // ID3v1 を削除
+            // → WMP に新しい項目として認識されてしまうことがあるので、消すべきでない
+            //if hasID3v1 then MP3Infp.RemoveMP3Tag (filePath, MP3Infp.MP3TagType.ID3v1) |> ignore
+
+        | ".m4a" ->
+            let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> filePath
+            tagInfo.SaveUnicode ()
+        | ext ->
+            printfn "Unknown ext '%s': File '%s'" ext filePath
+
+    let ChangeTagEncodingAll path =
+        let doneListFile = Path.Combine [| path; "$CTEA_done.txt" |]
+        let errListFile  = Path.Combine [| path; "$CTEA_error.txt" |]
+        File.AppendAllText (doneListFile, "") // Create if not exists
+
+        let doneSet  =
+            new HashSet<string>(File.ReadAllLines doneListFile)
+        let errSet =
+            new HashSet<string>()
+        let doneCount = ref 0
+
+        /// 未処理のファイル
+        let files =
+            Directory.EnumerateFiles (path, "*.m*", SearchOption.AllDirectories)
+            |> Seq.filter (fun fileName -> doneSet.Contains fileName |> not)
+        try
+            files |> Seq.iter (fun filePath ->
+                try
+                    ChangeTagEncoding filePath
+                    doneSet.Add (filePath) |> ignore
+                    doneCount |> Ref.inc
+                with
+                    | _ -> errSet.Add (filePath) |> ignore
+                )
+        finally
+            printfn "%d files processed successfully." (!doneCount)
+            printfn "%d errors reported." (errSet.Count)
+            if errSet.Count <> 0 then
+                File.WriteAllLines (doneListFile, doneSet.ToArray () |> Array.map string)
+                File.WriteAllLines (errListFile,  errSet.ToArray ()  |> Array.map string)
+
+    //-------------------------------------------
+
     /// 指定された名前の最も新しいトラックを得る
     let NewestTrackNamed title =
         let pl = Wmp.Value.mediaCollection.getByName(title)
@@ -368,10 +444,10 @@ module AboutMusicFiles =
 
         // 同名の曲が複数見つかった場合は、最新のものを選ぶ
         | cnt when cnt >= 2 ->
-            let acquistionTimes = [
-                for i in 0..(cnt - 1) do
-                    yield pl.[i].AcquisitionTime
-            ]
+            let acquistionTimes =
+                pl.ToSeq
+                |> Seq.map (fun track -> track.AcquisitionTime)
+                |> List.ofSeq
             let iNewest, _ =
                 acquistionTimes |> List.maxWithIndex snd
             Some (pl.[iNewest])
@@ -541,10 +617,10 @@ module AboutMusicFiles =
             MakePlaylistOfNewlyRegisteredSongs jsonPath
             //MakePlaylistOfNewlyRegisteredSongs FileName_NewlySongsDataJson
         | (3, [outPath]) ->
-            // テキストファイルにエクスポート処理
             ExportWmpLibraryAsText outPath
         | (4, [albumDir]) ->
-            // アルバムのファイルの名前変更処理
-           RenameAlbumFiles albumDir
+            RenameAlbumFiles albumDir
+        | (5, [dir]) ->
+            ChangeTagEncodingAll dir
         | _ ->
             failwith "unsupported mode."

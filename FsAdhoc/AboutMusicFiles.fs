@@ -202,15 +202,15 @@ module AboutMusicFiles =
     // 歌詞ファイルから曲メタデータを取得
     let internal loadSongDataFromLyrics lyricsPath =
         lyricsPath |> loadLyricsFromFile |> newSongsDataFromMyLyrics
-
+        
     /// 曲データ配列の入出力
     // F# の list<> は serialize できない。
     let saveSongsData path (songsData : SongMetadata list) =
-        assert (path |> Path.GetExtension |> Str.toLower = ".json")
+        assert (path |> Path.GetExtension |> Str.toLower |> (=) ".json")
         IO.File.WriteAllText(path, Serialize.serializeJson(songsData |> List.toArray), Text.Encoding.UTF8)
 
     let loadSongsData path =
-        assert (path |> Path.GetExtension |> Str.toLower = ".json")
+        assert (path |> Path.GetExtension |> Str.toLower |> (=) ".json")
         IO.File.ReadAllText (path, Text.Encoding.UTF8) |> Serialize.deserializeJson<SongMetadata[]> |> Array.toList
 
     //-------------------------------------------
@@ -253,16 +253,16 @@ module AboutMusicFiles =
     //-------------------------------------------
 
     let internal loadMP3Tag fileName =
-        MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
-        MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
-        MP3Infp.LoadTag(*<TagInfo.MP3_ID3v1>*)(fileName)
+        MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
+        MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
+        MP3Infp.LoadTag(fileName)
 
     let internal removeMeaninglessGenre (tagInfo : TagInfo) =
         if tagInfo.Genre |> (fun s -> Str.isNullOrEmpty s || (s = "Other") || (s = "ジャンル情報なし")) then
             tagInfo.Genre <- null
 
     let internal isMusicFileExt ext =
-        let legalExts = ["au";"avi"; "aif"; "iff"; "mov"; "mp3"; "mpg"; "m4a"; "wav"; "wma"; "wrk"]
+        let legalExts = ["au"; "avi"; "aif"; "iff"; "mov"; "mp3"; "mpg"; "m4a"; "wav"; "wma"; "wrk"]
         legalExts |> Seq.contains ext
 
     /// フォルダーにあるそれっぽいファイルの、タグとファイル名を書き換える
@@ -294,7 +294,8 @@ module AboutMusicFiles =
                 tagInfo.Album <- album
                 tagInfo.Artist <- songData.Vocal
                 tagInfo.TrackNumber <- songData.TrackNumber
-                    
+                //tagInfo.ReleaseYear <- songData.ReleaseYear
+
                 tagInfo |> removeMeaninglessGenre
                 tagInfo.SaveUnicode()
 
@@ -510,7 +511,7 @@ module AboutMusicFiles =
         let FileName_NewlyRegisteredSongNames = Path_Music + @"/newly_registered_songs.txt"
         let FileName_NewlySongsDataJson = Path_Music + "/$newlySongsData.json"
         let FileName_WmpLibText = Path_Music + (sprintf @"/wmplib_bak(%s).txt" String_Today)
-    
+
         let (bSuccess, iMode) =
             if argv.Length >= 1 then
                 Int32.TryParse(argv.[0])
@@ -573,11 +574,10 @@ module AboutMusicFiles =
                 ExportWmpLibraryAsText (outPath)
         | 4 ->
             // アルバムのファイルの名前変更処理
-            let printUsage () = printfn "usage: this 3 albumDir"
+            let printUsage () = printfn "usage: this 4 albumDir"
             if argv.Length < 2 then
                 printUsage()
             else
                 RenameAlbumFiles argv.[1]
         | _ ->
             failwith "unsupported mode."
-            //AboutMusicFiles.CopyPlaylistFromWmpToITunes "adds-2014"

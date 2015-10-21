@@ -11,6 +11,7 @@ open Basis.Core
 
 open Microsoft.FSharp
 open Microsoft.FSharp.Collections
+open Microsoft.FSharp.Reflection
 
     [<AutoOpen>]
     module Misc =
@@ -239,6 +240,11 @@ open Microsoft.FSharp.Collections
                 yield (o.Item i) |]
         //*)
 
+        let take n a =
+            Array.sub a 0 n
+        let drop n a =
+            Array.sub a 1 (Array.length a - 1)
+
     module Str =
         let (|Empty|Cons|) (str : string) =
             if str.Length = 0 then Empty else Cons(str.[0], str.[1..])
@@ -369,14 +375,6 @@ open Microsoft.FSharp.Collections
         
         let conj = BoolJunctionBuilder.Conjunction
         let disj = BoolJunctionBuilder.Disjunction
-
-        (*
-        printfn "-> %A" (BoolJunctionBuilder.conj {
-            for i in 0..10 do
-                printf "%d; " i
-                yield (i < 3)   // false を返した時点で終了
-        })
-        //*)
 
     module Map =
         /// list of keys in the map

@@ -519,65 +519,32 @@ module AboutMusicFiles =
                 (false, 0)
         if not bSuccess then failwith "Must be given mode of 0-3."
 
-        match iMode with
-        | 0 ->
-            //(*
+        let argv' = argv |> List.ofArray |> List.tail
+        match (iMode, argv') with
+        | (0, [lyricsPath; moviesDir; jsonPath]) ->
             // 動画ファイル検索
-            let printUsage = fun () -> printfn "usage: this 0 lyricsPath moviesDir jsonPath"
-            if argv.Length < 4 then
-                printUsage()
+            if (File.Exists lyricsPath |> not) || (Directory.Exists moviesDir |> not) then
+                printfn "usage: this 0 lyricsPath moviesDir jsonPath"
+                printfn "Given parameters are something wrong:"
+                printfn " lyricsPath = '%s'" lyricsPath
+                printfn " moviesDir = '%s'" moviesDir
             else
-                let lyricsPath = argv.[1]
-                let moviesDir  = argv.[2]
-                let jsonPath   = argv.[3]
-                if (File.Exists lyricsPath |> not) || (Directory.Exists moviesDir |> not) then
-                    printUsage()
-                    printfn "Given parameters are something wrong:"
-                    printfn " lyricsPath = '%s'" lyricsPath
-                    printfn " moviesDir = '%s'" moviesDir
-                else
-                    let songsData = LoadAndSaveSongDataFromLyrics lyricsPath jsonPath
-                    MoveMoviesOfSongsToSubDir (moviesDir, String_Today, songsData)
-            //*)
-            //let songsData = LoadAndSaveSongDataFromLyrics FileName_TemporaryLyrics FileName_NewlySongsDataJson
-            //MoveMoviesOfSongsToSubDir (Path_SourceMovies, "tmp", songsData)
-        | 1 ->
-            //(*
+                let songsData = LoadAndSaveSongDataFromLyrics lyricsPath jsonPath
+                MoveMoviesOfSongsToSubDir (moviesDir, String_Today, songsData)
+
+        | (1, [musicDir; jsonPath]) ->
             // mp3 タグ編集処理
-            let printUsage = fun () -> printfn "usage: this 1 musicDir jsonPath"
-            if argv.Length < 3 then
-                printUsage()
-            else
-                let musicsDir = argv.[1]
-                let jsonPath  = argv.[2]
-                MP3RegisterationSupport(musicsDir, jsonPath)
-            //*)
+            MP3RegisterationSupport (musicDir, jsonPath)
             //MP3RegisterationSupport(Path_RegisteratingMusicFiles, FileName_NewlySongsDataJson)
-        | 2 ->
+        | (2, [jsonPath]) ->
             // 新曲プレイリスト生成
-            //(*
-            let printUsage = fun () -> printfn "usage: this 2 jsonPath"
-            if argv.Length < 2 then
-                printUsage()
-            else
-                let jsonPath  = argv.[1]
-                MakePlaylistOfNewlyRegisteredSongs jsonPath
-            //*)
+            MakePlaylistOfNewlyRegisteredSongs jsonPath
             //MakePlaylistOfNewlyRegisteredSongs FileName_NewlySongsDataJson
-        | 3 ->
+        | (3, [outPath]) ->
             // テキストファイルにエクスポート処理
-            let printUsage = fun () -> printfn "usage: this 3 outPath"
-            if argv.Length < 2 then
-                printUsage()
-            else
-                let outPath = argv.[1]
-                ExportWmpLibraryAsText (outPath)
-        | 4 ->
+            ExportWmpLibraryAsText outPath
+        | (4, [albumDir]) ->
             // アルバムのファイルの名前変更処理
-            let printUsage () = printfn "usage: this 4 albumDir"
-            if argv.Length < 2 then
-                printUsage()
-            else
-                RenameAlbumFiles argv.[1]
+           RenameAlbumFiles albumDir
         | _ ->
             failwith "unsupported mode."

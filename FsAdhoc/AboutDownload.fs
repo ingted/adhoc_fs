@@ -3,6 +3,8 @@
 open System
 open System.Net
 open System.Threading
+open System.Text.RegularExpressions
+open System.IO
 
 let pathDownload = "D:/Docs/downloads"
 let rnd = new Random()
@@ -26,7 +28,7 @@ let doing() =
 
         
         ()
-    
+
     (*
     wc.DownloadFile("http://mtgwiki.com/index.php?title=%E3%82%B0%E3%83%A9%E3%83%B3%E3%83%97%E3%83%AA",
         pathDownload + "/groundprix.html")
@@ -34,3 +36,22 @@ let doing() =
     //*)
     ()
 
+let downloadFromUtamap htmlFile =
+    let lyricsId =
+        let pattern = new Regex(@"js_smt\.php\?unum=((?:\w|\d|\-)+)")
+        let html =
+          File.ReadAllText htmlFile
+        let m = pattern.Match (html)
+
+        if m.Groups.Count > 1
+          then Some <| m.Groups.[1].Value
+          else None
+
+    lyricsId |> Option.iter (fun lyricsId ->
+      let url = @"http://www.utamap.com/js_smt.php?unum=" + lyricsId
+      use wc = new WebClient()
+      let js = wc.DownloadString url
+      let pattern = new Regex(@"',\d+,\d+,\d+\);context2.fillText\('")
+      let lyrics = pattern.Replace (js, "\r\n")
+      File.WriteAllText (htmlFile + ".txt", lyrics)
+      )

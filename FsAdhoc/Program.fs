@@ -20,7 +20,7 @@ open FParsec
 let main argv =
     let argv = Console.ReadCommandLine argv
 
-    AboutMusicFiles.mainMusic argv
+    //AboutMusicFiles.mainMusic argv
     
     //AboutDownload.doing()
     //AboutWixoss.Something.sample()

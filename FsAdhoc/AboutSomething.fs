@@ -1,6 +1,7 @@
 ﻿module AboutSomething
 
 open System
+open System.IO
 open System.Net
 open System.Xml
 open System.Xml.Linq
@@ -10,6 +11,21 @@ open Basis.Core
 open Basis.Core.Xml.NamespaceLess
 open Basis.Core.Xml.NamespaceLess.XPath
 open Uedai.Utilities
+
+let RenameFiles dir pattern (subst: string) dryRun =
+  let regex = new Regex(pattern)
+  let files = Directory.GetFileSystemEntries (dir, "*", SearchOption.AllDirectories)
+  files |> Array.iter (fun path ->
+    let dir = path |> Path.GetDirectoryName
+    let fileName  = path |> Path.GetFileName
+    let fileName' = regex.Replace(fileName, subst)
+    let path' = Path.Combine [|dir; fileName'|]
+    if fileName <> fileName' then
+      if dryRun then
+        printfn "Move %s to %s" path path'
+      else
+        File.Move (path, path')
+    )
 
 module DownloadCardDataFromSkyGalleonWiki =
     let statusTypes = ["HP"; "AT"; "AG"]

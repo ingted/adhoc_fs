@@ -265,9 +265,14 @@ module AboutMusicFiles =
     let internal isMusicFileExt ext =
         let legalExts = ["au"; "avi"; "aif"; "iff"; "mov"; "mp3"; "mpg"; "m4a"; "wav"; "wma"; "wrk"]
         legalExts |> Seq.contains ext
+        
+    let internal renameFileToTitle title fileName =
+        let newFileName =
+            Path.Escape (konst "_") title + Path.GetExtension fileName
+        File.Move (fileName, newFileName)
 
     /// フォルダーにあるそれっぽいファイルの、タグとファイル名を書き換える
-    let internal CommitTagsToFiles dirPath songsData =
+    let internal CommitTagsToFiles dirPath =
         let fileNames = Directory.GetFiles dirPath
         
         let filterFiles songData (files: string[]) =
@@ -282,48 +287,48 @@ module AboutMusicFiles =
                     None
                 )
 
+        let albumAttr songData =
+            if songData.Composer = songData.Writer
+              then songData.Composer
+              else sprintf "c:%s/w:%s" songData.Composer songData.Writer
+
+        let setTag songData (tagInfo: #TagInfo) =
+            tagInfo.Title <- songData.Title
+            tagInfo.Album <- albumAttr songData
+            tagInfo.Artist <- songData.Vocal
+            tagInfo.TrackNumber <- songData.TrackNumber
+            //tagInfo.ReleaseYear <- songData.ReleaseYear
+            tagInfo |> removeMeaninglessGenre
+            tagInfo.SaveUnicode()
+
+        let dispatch songData fileName =
+            match fileName |> Path.GetExtension |> Str.toLower with
+            | ".mp3" ->
+                MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
+                MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
+                let tagInfo = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (fileName)
+                tagInfo.Composer <- songData.Composer
+                tagInfo |> setTag songData
+            | ".m4a" ->
+                let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> (fileName)
+                tagInfo.Composer <- songData.Composer
+                tagInfo |> setTag songData
+            | _ -> (MP3Infp.LoadTag (fileName)) |> setTag songData
+            
+        // 長い曲名は手動で再登録する必要があるので警告する
+        let warnTooLongAttr songData =
+            let album = albumAttr songData
+            if songData.Title.Length >= 15 then
+                printfn "Maybe 「%s」's title is too long." songData.Title
+            if album.Length >= 15 then
+                printfn "Maybe album name 「%s」 is too long." album
+
         let commitTag songData fileName =
-            let album =
-                if songData.Composer = songData.Writer
-                    then songData.Composer
-                    else sprintf "c:%s/w:%s" songData.Composer songData.Writer
-
-            let setTag (tagInfo: #TagInfo) =
-                tagInfo.Title <- songData.Title
-                tagInfo.Album <- album
-                tagInfo.Artist <- songData.Vocal
-                tagInfo.TrackNumber <- songData.TrackNumber
-                //tagInfo.ReleaseYear <- songData.ReleaseYear
-                tagInfo |> removeMeaninglessGenre
-                tagInfo.SaveUnicode()
-
-            let dispatch fileName =
-                match fileName |> Path.GetExtension |> Str.toLower with
-                | ".mp3" ->
-                    MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
-                    MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
-                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (fileName)
-                    tagInfo.Composer <- songData.Composer
-                    setTag tagInfo
-                | ".m4a" ->
-                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> (fileName)
-                    tagInfo.Composer <- songData.Composer
-                    setTag tagInfo
-                | _ -> setTag <| MP3Infp.LoadTag (fileName)
-
+            let album = albumAttr songData
             try
-                dispatch fileName
-
-                // 長い曲名は手動で再登録する必要があるので警告する
-                if songData.Title.Length >= 15 then
-                    printfn "Maybe 「%s」's title is too long." songData.Title
-                if album.Length >= 15 then
-                    printfn "Maybe album name 「%s」 is too long." album
-
-                // ファイル名を曲名にする
-                let newFileName =
-                    Path.Escape (konst "_") (songData.Title) + Path.GetExtension fileName
-                File.Move (fileName, newFileName)
+                dispatch songData fileName
+                warnTooLongAttr songData
+                renameFileToTitle (songData.Title) fileName
 
             with
                 // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
@@ -334,7 +339,7 @@ module AboutMusicFiles =
                 | e ->
                     printfn "Unknown error: %s" (e.Message)
 
-        songsData |> List.iter (fun songData ->
+        List.iter (fun songData ->
             fileNames
             |> filterFiles songData
             |> Option.iter (commitTag songData)

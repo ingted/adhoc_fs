@@ -328,7 +328,8 @@ module AboutMusicFiles =
                     printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
                 | :? MP3Infp.Mp3infpException as e ->
                     printfn "Error while MP3 tag editting:\r\nfileName: %s\r\nmsg: %s" fileName (e.Message)
-                | _ -> reraise()
+                | e ->
+                    printfn "Unknown error: %s" (e.Message)
 
         songsData |> List.iter (fun songData ->
             fileNames

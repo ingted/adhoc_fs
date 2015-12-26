@@ -283,35 +283,35 @@ module AboutMusicFiles =
                 )
 
         let commitTag songData fileName =
+            let album =
+                if songData.Composer = songData.Writer
+                    then songData.Composer
+                    else sprintf "c:%s/w:%s" songData.Composer songData.Writer
+
+            let setTag (tagInfo: #TagInfo) =
+                tagInfo.Title <- songData.Title
+                tagInfo.Album <- album
+                tagInfo.Artist <- songData.Vocal
+                tagInfo.TrackNumber <- songData.TrackNumber
+                //tagInfo.ReleaseYear <- songData.ReleaseYear
+                tagInfo |> removeMeaninglessGenre
+                tagInfo.SaveUnicode()
+
+            let dispatch fileName =
+                match fileName |> Path.GetExtension |> Str.toLower with
+                | ".mp3" ->
+                    MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
+                    MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
+                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (fileName)
+                    tagInfo.Composer <- songData.Composer
+                    setTag tagInfo
+                | ".m4a" ->
+                    let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> (fileName)
+                    tagInfo.Composer <- songData.Composer
+                    setTag tagInfo
+                | _ -> setTag <| MP3Infp.LoadTag (fileName)
+
             try
-                let album =
-                    if songData.Composer = songData.Writer
-                        then songData.Composer
-                        else sprintf "c:%s/w:%s" songData.Composer songData.Writer
-
-                let setTag (tagInfo: #TagInfo) =
-                    tagInfo.Title <- songData.Title
-                    tagInfo.Album <- album
-                    tagInfo.Artist <- songData.Vocal
-                    tagInfo.TrackNumber <- songData.TrackNumber
-                    //tagInfo.ReleaseYear <- songData.ReleaseYear
-                    tagInfo |> removeMeaninglessGenre
-                    tagInfo.SaveUnicode()
-
-                let dispatch fileName =
-                    match fileName |> Path.GetExtension |> Str.toLower with
-                    | ".mp3" ->
-                        MP3Infp.RemoveMP3Tag(fileName, MP3Infp.MP3TagType.ID3v1) |> ignore
-                        MP3Infp.AddMP3Tag   (fileName, MP3Infp.MP3TagType.ID3v2) |> ignore
-                        let tagInfo = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (fileName)
-                        tagInfo.Composer <- songData.Composer
-                        setTag tagInfo
-                    | ".m4a" ->
-                        let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> (fileName)
-                        tagInfo.Composer <- songData.Composer
-                        setTag tagInfo
-                    | _ -> setTag <| MP3Infp.LoadTag (fileName)
-
                 dispatch fileName
 
                 // 長い曲名は手動で再登録する必要があるので警告する

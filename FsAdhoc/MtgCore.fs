@@ -337,6 +337,9 @@ module StrExp =
     | Ja
 
   type ColorAtom with
+      static member Chars =
+          ColorAtom.Cases |> List.map char
+
       static member FromChar(c) =
           ColorAtom.Cases
           |> List.tryFind (fun ca -> (char ca) = c)
@@ -348,42 +351,31 @@ module StrExp =
 
   [<AutoOpen>]
   module Japanese =
-    let jpColorAtoms =
-        [ '白'; '青'; '黒'; '赤'; '緑' ]
-    let colorAtomFromJp = function
-        | '白' -> White
-        | '青' -> Blue
-        | '黒' -> Black
-        | '赤' -> Red
-        | '緑' -> Green
-        | _ -> failwith "unknown color-atom"
+    type ColorAtom with
+        static member JaChars =
+            [ '白'; '青'; '黒'; '赤'; '緑' ]
 
-    let jpSupertypes =
-        [ "伝説の"; "基本"; "氷雪"; "ワールド" ]
-    let supertypeFromJp = function
-        | "伝説の"   -> Legendary
-        | "基本"     -> Basic
-        | "氷雪"     -> Snow
-        | "ワールド" -> World
-        | _ -> failwith "unknown supertype"
+        static member FromJaChar (jaChar) =
+            (ColorAtom.JaChars, ColorAtom.Cases) |> List.tryAssocUnzip jaChar
 
-    let jpCardTypes =
-        [ "アーティファクト"
-          "クリーチャー"
-          "エンチャント"
-          "プレインズウォーカー"
-          "土地"
-          "インスタント"
-          "ソーサリー"
-          "部族"
-        ]
-    let cardTypeFromJp = function
-        | "アーティファクト"     -> Artifact
-        | "クリーチャー"         -> Creature
-        | "エンチャント"         -> Enchantment
-        | "プレインズウォーカー" -> Planeswalker
-        | "土地"                 -> Land
-        | "インスタント"         -> Instant
-        | "ソーサリー"           -> Sorcery
-        | "部族"                 -> Tribal
-        | _ -> failwith "unknown cardtype"
+    type Supertype with
+        static member JaNames =
+            [ "伝説の"; "基本"; "氷雪"; "ワールド" ]
+
+        static member FromJaName (jaName) =
+            (Supertype.JaNames, Supertype.Cases) |> List.tryAssocUnzip jaName
+
+    type CardType with
+        static member JaNames =
+            [ "アーティファクト"
+              "クリーチャー"
+              "エンチャント"
+              "プレインズウォーカー"
+              "土地"
+              "インスタント"
+              "ソーサリー"
+              "部族"
+            ]
+
+        static member FromJaName (jaName) =
+            (CardType.JaNames, CardType.Cases) |> List.tryAssocUnzip jaName

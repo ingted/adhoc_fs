@@ -254,6 +254,12 @@ module List =
           (l, r) ||> Option.union
       self |> List.fold f None
 
+  // tryAssoc (unzipped version)
+  let tryAssocUnzip key (keys, vals) =
+      keys
+      |> List.tryFindIndex ((=) key)
+      |> Option.map (fun i -> vals |> Seq.nth i)
+
 module Array =
   let inline ofCol< ^T, ^U when ^T: (member Count: int) and ^T: (member Item: int -> ^U)> (o: ^T): ^U[] =
       [| for i in 0..((^T: (member Count: int) o) - 1) do

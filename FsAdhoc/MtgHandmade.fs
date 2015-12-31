@@ -35,9 +35,11 @@ module Handmade =
         between (pchar '《') (pchar '》') content
 
     let colorAtomJpChar =
-        anyOf "白青黒赤緑" |>> colorAtomFromJp
+        anyOf (ColorAtom.JaChars |> Str.join "")
+        |>> (ColorAtom.FromJaChar >> Option.get)
     let colorAtomEnChar =
-        anyOf "WUBRG" |>> (ColorAtom.FromChar >> Option.get)
+        anyOf (ColorAtom.Chars |> Str.join "")
+        |>> (ColorAtom.FromChar >> Option.get)
     let colorAtomChar =
         (attempt colorAtomJpChar) <|> colorAtomEnChar
 
@@ -52,8 +54,7 @@ module Handmade =
         let atomicSymbol =
                 (puint32
                     |>> NumManaSymbol)
-            <|> (anyOf jpColorAtoms
-                    |>> (colorAtomFromJp >> ColorManaSymbol))
+            <|> (colorAtomJpChar |>> ColorManaSymbol)
             <|> (charReturn 'Φ' TwoLifeSymbol)
             <|> (charReturn '氷' SnowManaSymbol)
             <|> (CharParsers.letter
@@ -87,11 +88,14 @@ module Handmade =
         between (pchar '[') (pchar ']')
             (sepBy colorAtomChar (pchar '/'))
 
+    /// TODO: 日本語の特殊タイプの分析は単純にはいかない
     let supertypesJp =
-        sepBy (anyInLine |>> supertypeFromJp) (opt (pchar '・'))
+        sepBy (anyInLine |>> Supertype.FromJaName) (opt (pchar '・'))
+        |>> List.choose id  // TODO: 無視されたものを警告
 
     let cardTypesJp =
-        sepBy1 (anyInLine |>> cardTypeFromJp) (opt (pchar '・'))
+        sepBy1 (anyInLine |>> CardType.FromJaName) (opt (pchar '・'))
+        |>> List.choose id  // TODO: 無視されたものを警告
 
     (*
     let subtypeWithEnglish =

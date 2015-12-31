@@ -21,14 +21,11 @@ let main argv =
     let argv = Console.ReadCommandLine argv
 
     //AboutMusicFiles.mainMusic argv
-    
+
     //AboutDownload.doing()
     //AboutWixoss.Something.sample()
     //AboutMath.AboutMath.sample()
     //AboutSomething.DownloadCardDataFromSkyGalleonWiki.updateCsvItems @"D:/Docs/downloads/it.csv"
 
-    Console.WriteLine "(* all processes have completed maybe. *)"
-    Console.WriteLine "(* push some key to end... *)"
-    Console.ReadKey() |> ignore
     //exit code
     0

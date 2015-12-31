@@ -1,20 +1,11 @@
-﻿// Learn more about F# at http://fsharp.net
-// See the 'F# Tutorial' project for more help.
-
-module Program
+﻿module Program
 
 open System
 open System.IO
-
-open Basis.Core
-open Basis.Core.Option
-
 open MTG
 open AboutMusicFiles
 open AboutSomething
 open Uedai.Utilities
-
-open FParsec
 
 [<EntryPoint>]
 let main argv =

@@ -13,6 +13,8 @@ open Microsoft.FSharp
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 
+open FParsec
+
 [<AutoOpen>]
 module Misc =
   /// constant function
@@ -618,3 +620,15 @@ module Console =
           let s = Console.ReadLine()
           Option.if' (s <> null) (fun() -> (s, ()))
         ) ()
+
+[<AutoOpen>]
+module FParsec =
+  type Parser<'T> = Parser<'T, unit>
+
+  /// 改行を除く任意の文字列
+  let anyInLine: Parser<_> =
+      manyChars (noneOf "\n")
+
+  /// 改行を除く空白
+  let ws: Parser<_> =
+      skipMany (anyOf " \t")

@@ -11,6 +11,7 @@ open Uedai.Utilities
 let main argv =
     let argv = Console.ReadCommandLine argv
 
+    MTG.Handmade.main ()
     //AboutMusicFiles.mainMusic argv
 
     //AboutDownload.doing()

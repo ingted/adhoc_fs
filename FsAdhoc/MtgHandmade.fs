@@ -23,13 +23,7 @@ module Handmade =
 
   // 文法定義
   module CardSyntaxParser =
-    type Parser<'T> = Parser<'T, unit>  // 「値制限」対策
-
-    /// 改行を除く任意の文字列
-    let anyInLine : Parser<_> = manyChars (noneOf "\n")
-
-    /// 改行を除く空白
-    let ws = skipMany (anyOf " \t")
+    open Uedai.Utilities.FParsec
 
     /// カード名
     let cardName =
@@ -149,7 +143,7 @@ module Handmade =
     let anyStringWithoutEmptyLine : Parser<_> =
         manyCharsTill anyChar (attempt (pstring @"\n\n"))
 
-    let parseCardSpec : Parser<_> =
+    let cardSpec : Parser<_> =
         let f name manacost typeline text (pt, loyalty) =
             let (colorIdent, supertypes, cardtypes, subtypes) = typeline
             let colorIdent = colorIdent |> Option.map colorFromAtoms
@@ -175,27 +169,27 @@ module Handmade =
           f
 
     // regular, flip, double-faced, splits
-    let parseRegularCard : Parser<_> =
-        parseCardSpec |>> RegularCard
+    let regularCard: Parser<_> =
+        cardSpec |>> RegularCard
 
-    let parseFlipOrDoubleFacedCard : Parser<_> =
+    let flipOrDoubleFacedCard: Parser<_> =
         let connector =
                 (stringReturn "<flip>" FlipCard)
             <|> (stringReturn "<double-faced>" DoubleFacedCard)
         pipe3
-          parseCardSpec connector parseCardSpec
+          cardSpec connector cardSpec
           (fun c1 ctor c2 -> ctor (c1, c2))
 
-    let parseSplitCard : Parser<_> =
-        sepBy1 parseCardSpec (skipString "<split>")
+    let splitCard: Parser<_> =
+        sepBy1 cardSpec (skipString "<split>")
         |>> SplitCard
 
-    let parseCardBody =
-        (attempt parseRegularCard)
-        <|> (attempt parseFlipOrDoubleFacedCard)
-        <|> parseSplitCard
+    let cardBody =
+        (attempt regularCard)
+        <|> (attempt flipOrDoubleFacedCard)
+        <|> splitCard
 
-    let parseCard : Parser<_> =
+    let cardSingle: Parser<_> =
         let f card ft comms =
             {
               Card = card
@@ -203,4 +197,31 @@ module Handmade =
             }
 
         pipe3
-          parseCardBody (opt flavorText) (many commentline) f
+          cardBody (opt flavorText) (many commentline) f
+
+    let cardList: Parser<_> =
+        sepBy cardSingle skipNewline
+
+    let parseCardList name text =
+        CharStream.ParseString (text, 0, text |> Str.length, cardList, (), name)
+
+  open System.IO
+  let main () =
+      let text = File.ReadAllText (@"D:\Docs\archive\_nobak\__testdata.txt")
+      let reply =
+          CardSyntaxParser.parseCardList "MTG Handmade cardlist (test)" text
+      let result =
+          match reply.Status with
+          | ReplyStatus.Ok ->
+              Result.Success (reply.Result)
+          | ReplyStatus.Error
+          | ReplyStatus.FatalError ->
+              Result.Failure (reply.Error)
+          | _ -> failwith "unknown status"
+      match result with
+      | Result.Success ls ->
+          let cardList = ls
+          printfn "%d cards found." (cardList |> List.length)
+      | Result.Failure err ->
+          printfn "Error: %A" (err)
+      ()

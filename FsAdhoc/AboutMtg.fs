@@ -144,21 +144,26 @@ module MTG =
 
       member this.ColorPayable =
           match this with
-          | ColorManaSymbol ca -> ColorPayable.Atom ca
-          | HybridManaSymbol (lhs, rhs) -> ColorPayable.Or [lhs.ColorPayable; rhs.ColorPayable]
-          | HalfManaSymbol src -> src.ColorPayable
-          | NumManaSymbol _ | VarManaSymbol _
-          | SnowManaSymbol | TwoLifeSymbol -> ColorPayable.Colorless
-      member this.Color = this.ColorPayable.ToColor()
+          | ColorManaSymbol ca ->
+              ColorPayable.Atom ca
+          | HybridManaSymbol (lhs, rhs) ->
+              ColorPayable.Or [lhs.ColorPayable; rhs.ColorPayable]
+          | HalfManaSymbol src ->
+              src.ColorPayable
+          | NumManaSymbol _
+          | VarManaSymbol _
+          | SnowManaSymbol
+          | TwoLifeSymbol ->
+              ColorPayable.Colorless
+      member this.Color =
+          this.ColorPayable.ToColor()
 
     type ManaCost = ManaSymbol list //Bag<ManaSymbol>
     let colorFromManacost (mc : ManaCost) =
         mc |> List.fold (fun clr sym -> clr + sym.Color) colorless
 
     type PhaseSymbol =
-      /// {T}
       | TapSymbol
-      /// {Q}
       | UntapSymbol
 
     type LoyaltySymbol =
@@ -442,14 +447,13 @@ module Scripts =
 
         /// マナ・コスト
         let manaSymbolJp : Parser<_> =
-            let hybridManaSymbol lhs rhs =
-                ManaSymbol.HybridManaSymbol (lhs, rhs)
+            let symbol, symbolRef =
+                FParsec.Primitives.createParserForwardedToRef ()
 
-            let rec groupSymbol =
-                lazy( between (pchar '(') (pchar ')') (symbol : Lazy<_>).Value )
+            let groupSymbol =
+                between (pchar '(') (pchar ')') symbol
 
-            and atomicSymbol =
-                lazy(
+            let atomicSymbol =
                     (puint32
                         |>> NumManaSymbol)
                 <|> (anyOf jpColorAtoms
@@ -458,22 +462,26 @@ module Scripts =
                 <|> (charReturn '氷' SnowManaSymbol)
                 <|> (CharParsers.letter
                         |>> (string >> VarManaSymbol))
-                //<|> groupSymbol.Value
-                )
+                <|> groupSymbol
 
-            and symbol =
-                lazy(
-                    attempt (atomicSymbol.Value .>> (pstring "/2") |>> HalfManaSymbol)
-                <|> attempt
-                      (pipe2
-                        (atomicSymbol.Value .>> (pchar '/'))
-                        (sepBy1 atomicSymbol.Value (pchar '/'))   // 白/青/黒 のような並列を認める
-                        (fun h t -> List.fold hybridManaSymbol h t)
-                      )
-                <|> atomicSymbol.Value
-                )
+            let halfSymbol =
+                atomicSymbol .>> (pstring "/2") |>> HalfManaSymbol
 
-            groupSymbol.Value
+            let hybrid1 lhs rhs =
+                ManaSymbol.HybridManaSymbol (lhs, rhs)
+
+            let hybridMany =
+                pipe2
+                  (atomicSymbol .>> (pchar '/'))
+                  (sepBy1 atomicSymbol (pchar '/'))   // 白/青/黒 のような並列を認める
+                  (List.fold hybrid1)
+
+            symbolRef :=
+                    attempt halfSymbol
+                <|> attempt hybridMany
+                <|> atomicSymbol
+
+            groupSymbol
 
         let manaCostJp =
             many manaSymbolJp

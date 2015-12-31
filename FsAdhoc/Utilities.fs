@@ -630,19 +630,26 @@ module Console =
 
 [<AutoOpen>]
 module Reflection =
-  /// Not used
-  type DUStr<'T> () =
-    static member val private Cases =
-        FSharpType.GetUnionCases typeof<'T>
+  type DU<'T> () =
+    static member val CaseInfos =
+        FSharpType.GetUnionCases(typeof<'T>)
         |> Array.toList
 
     static member val Names =
-        DUStr<'T>.Cases
-        |> List.map (fun (case : UnionCaseInfo) -> case.Name)
+        DU<'T>.CaseInfos
+        |> List.map (fun (case: UnionCaseInfo) -> case.Name)
+
+    static member val UnitCases =
+        DU<'T>.CaseInfos
+        |> List.choose (fun ci ->
+            if ci.GetFields().Length = 0
+            then Some (FSharpValue.MakeUnion(ci, Array.empty) :?> 'T)
+            else None
+          )
 
     static member FromString str =
         let caseOpt =
-            DUStr<'T>.Cases
+            DU<'T>.CaseInfos
             |> List.tryFind (fun case -> case.Name = str)
         match caseOpt with
         | Some case -> FSharpValue.MakeUnion (case, [||])

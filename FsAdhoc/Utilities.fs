@@ -81,6 +81,7 @@ module Option =
       | Some x -> proc()
       | None -> None
 
+  /// mplus in MonadPlus, or (<|>) in Alternative
   ///operator || in javascript; ordered, not shortcircuit
   let union opt2 = union' (fun() -> opt2)
 
@@ -246,6 +247,12 @@ module List =
       ) self [[]]
   //*)
   let takeTuple3 self = (List.nth self 0), (List.nth self 1), (List.nth self 2)
+
+  let tryAssoc key self =
+      let f l (k, v) =
+          let r = Option.if' (k = key) (fun () -> v)
+          (l, r) ||> Option.union
+      self |> List.fold f None
 
 module Array =
   let inline ofCol< ^T, ^U when ^T: (member Count: int) and ^T: (member Item: int -> ^U)> (o: ^T): ^U[] =

@@ -299,6 +299,13 @@ module Dynamic =
 /// string expression
 [<AutoOpen>]
 module StrExp =
+  /// language tag
+  type Lang =
+    /// en_US (default)
+    | En
+    /// ja_JP
+    | Ja
+
   type ColorAtom with
       static member FromChar = function
           | 'W' -> Some White
@@ -307,7 +314,7 @@ module StrExp =
           | 'R' -> Some Red
           | 'G' -> Some Green
           | _ -> None
-            
+
       member this.ToChar =
           match this with
           | White -> 'W'
@@ -338,6 +345,7 @@ module StrExp =
           | Sorcery      -> 'S'
           | Tribal       -> 'T'
 
+  [<AutoOpen>]
   module Japanese =
     let jpColorAtoms =
         [ '白'; '青'; '黒'; '赤'; '緑' ]

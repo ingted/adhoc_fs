@@ -299,25 +299,6 @@ module Dynamic =
 /// string expression
 [<AutoOpen>]
 module StrExp =
-  open Core
-  open Microsoft.FSharp.Reflection
-
-  type DUStr<'T>() =
-    static member val private Cases =
-        FSharpType.GetUnionCases typeof<'T>
-
-    static member val Names =
-        DUStr<'T>.Cases
-        |> Array.map (fun (case : UnionCaseInfo) -> case.Name)
-
-    static member FromString str =
-        let caseOpt =
-            DUStr<'T>.Cases
-            |> Array.tryFind (fun case -> case.Name = str)
-        match caseOpt with
-        | Some case -> FSharpValue.MakeUnion (case, [||])
-        | None -> failwith ("unknown case of " + typeof<'T>.Name)
-        
   type ColorAtom with
       static member FromChar = function
           | 'W' -> Some White

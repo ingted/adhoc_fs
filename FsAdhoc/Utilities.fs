@@ -392,7 +392,7 @@ module BoolJunctionBuilder =
             ( src.GetEnumerator()
             , (fun iter -> this.While (iter.MoveNext, (fun() -> body iter.Current)))
             )
-                
+
       static member Conjunction = BoolJunctionBuilder false
       static member Disjunction = BoolJunctionBuilder true
         
@@ -620,6 +620,26 @@ module Console =
           let s = Console.ReadLine()
           Option.if' (s <> null) (fun() -> (s, ()))
         ) ()
+
+[<AutoOpen>]
+module Reflection =
+  /// Not used
+  type DUStr<'T> () =
+    static member val private Cases =
+        FSharpType.GetUnionCases typeof<'T>
+        |> Array.toList
+
+    static member val Names =
+        DUStr<'T>.Cases
+        |> List.map (fun (case : UnionCaseInfo) -> case.Name)
+
+    static member FromString str =
+        let caseOpt =
+            DUStr<'T>.Cases
+            |> List.tryFind (fun case -> case.Name = str)
+        match caseOpt with
+        | Some case -> FSharpValue.MakeUnion (case, [||])
+        | None -> failwith ("unknown case of " + typeof<'T>.Name)
 
 [<AutoOpen>]
 module FParsec =

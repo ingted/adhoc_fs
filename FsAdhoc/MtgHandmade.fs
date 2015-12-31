@@ -41,7 +41,7 @@ module Handmade =
     let colorAtomChar =
         (attempt colorAtomJpChar) <|> colorAtomEnChar
 
-    /// マナ・コスト
+    /// マナ・シンボル (日本語)
     let manaSymbolJp : Parser<_> =
         let symbol, symbolRef =
             FParsec.Primitives.createParserForwardedToRef ()

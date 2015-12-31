@@ -9,8 +9,8 @@ open System.IO
 open Basis.Core
 open Basis.Core.Option
 
+open MTG
 open AboutMusicFiles
-open AboutMtg
 open AboutSomething
 open Uedai.Utilities
 

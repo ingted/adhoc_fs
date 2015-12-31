@@ -83,7 +83,9 @@
     <Compile Include="SeqWithFlowControl.fs" />
     <Compile Include="mp3infp.fs" />
     <Compile Include="TinyProlog.fs" />
-    <Compile Include="AboutMtg.fs" />
+    <Compile Include="MtgCore.fs" />
+    <Compile Include="MtgHandmade.fs" />
+    <Compile Include="MtgScript.fs" />
     <Compile Include="AboutMath.fs" />
     <Compile Include="AboutMusicFiles.fs" />
     <Compile Include="AboutTyping.fs" />

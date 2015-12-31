@@ -421,179 +421,187 @@ module Scripts =
 
     // 文法定義
     module CardSyntaxParser =
-        type Parser<'T> = Parser<'T, unit>  // 「値制限」対策
+      type Parser<'T> = Parser<'T, unit>  // 「値制限」対策
 
-        /// 改行を除く任意の文字列
-        let anyInLine : Parser<_> = manyChars (noneOf "\n")
+      /// 改行を除く任意の文字列
+      let anyInLine : Parser<_> = manyChars (noneOf "\n")
 
-        /// 改行を除く空白
-        let ws = skipMany (anyOf " \t")
+      /// 改行を除く空白
+      let ws = skipMany (anyOf " \t")
 
-        /// カード名
-        let cardName =
-            let content =
-                    (attempt anyInLine |>> (fun jp -> { Jp = jp; En = "" }))
-                <|> (pipe3 anyInLine (pchar '/') anyInLine
-                        (fun jp slash en -> { Jp = jp; En = en }))
+      /// カード名
+      let cardName =
+          let content =
+                  (attempt anyInLine |>> (fun jp -> { Jp = jp; En = "" }))
+              <|> (pipe3 anyInLine (pchar '/') anyInLine
+                      (fun jp slash en -> { Jp = jp; En = en }))
 
-            between (pchar '《') (pchar '》') content
+          between (pchar '《') (pchar '》') content
 
-        let colorAtomJpChar =
-            anyOf "白青黒赤緑" |>> colorAtomFromJp
-        let colorAtomEnChar =
-            anyOf "WUBRG" |>> (ColorAtom.FromChar >> Option.get)
-        let colorAtomChar =
-            (attempt colorAtomJpChar) <|> colorAtomEnChar
+      let colorAtomJpChar =
+          anyOf "白青黒赤緑" |>> colorAtomFromJp
+      let colorAtomEnChar =
+          anyOf "WUBRG" |>> (ColorAtom.FromChar >> Option.get)
+      let colorAtomChar =
+          (attempt colorAtomJpChar) <|> colorAtomEnChar
 
-        /// マナ・コスト
-        let manaSymbolJp : Parser<_> =
-            let symbol, symbolRef =
-                FParsec.Primitives.createParserForwardedToRef ()
+      /// マナ・コスト
+      let manaSymbolJp : Parser<_> =
+          let symbol, symbolRef =
+              FParsec.Primitives.createParserForwardedToRef ()
 
-            let groupSymbol =
-                between (pchar '(') (pchar ')') symbol
+          let groupSymbol =
+              between (pchar '(') (pchar ')') symbol
 
-            let atomicSymbol =
-                    (puint32
-                        |>> NumManaSymbol)
-                <|> (anyOf jpColorAtoms
-                        |>> (colorAtomFromJp >> ColorManaSymbol))
-                <|> (charReturn 'Φ' TwoLifeSymbol)
-                <|> (charReturn '氷' SnowManaSymbol)
-                <|> (CharParsers.letter
-                        |>> (string >> VarManaSymbol))
-                <|> groupSymbol
+          let atomicSymbol =
+                  (puint32
+                      |>> NumManaSymbol)
+              <|> (anyOf jpColorAtoms
+                      |>> (colorAtomFromJp >> ColorManaSymbol))
+              <|> (charReturn 'Φ' TwoLifeSymbol)
+              <|> (charReturn '氷' SnowManaSymbol)
+              <|> (CharParsers.letter
+                      |>> (string >> VarManaSymbol))
+              <|> groupSymbol
 
-            let halfSymbol =
-                atomicSymbol .>> (pstring "/2") |>> HalfManaSymbol
+          let halfSymbol =
+              atomicSymbol .>> (pstring "/2") |>> HalfManaSymbol
 
-            let hybrid1 lhs rhs =
-                ManaSymbol.HybridManaSymbol (lhs, rhs)
+          let hybrid1 lhs rhs =
+              ManaSymbol.HybridManaSymbol (lhs, rhs)
 
-            let hybridMany =
-                pipe2
-                  (atomicSymbol .>> (pchar '/'))
-                  (sepBy1 atomicSymbol (pchar '/'))   // 白/青/黒 のような並列を認める
-                  (List.fold hybrid1)
+          let hybridMany =
+              pipe2
+                (atomicSymbol .>> (pchar '/'))
+                (sepBy1 atomicSymbol (pchar '/'))   // 白/青/黒 のような並列を認める
+                (List.fold hybrid1)
 
-            symbolRef :=
-                    attempt halfSymbol
-                <|> attempt hybridMany
-                <|> atomicSymbol
+          symbolRef :=
+                  attempt halfSymbol
+              <|> attempt hybridMany
+              <|> atomicSymbol
 
-            groupSymbol
+          groupSymbol
 
-        let manaCostJp =
-            many manaSymbolJp
+      let manaCostJp =
+          many manaSymbolJp
 
-        /// 色識別子
-        let colorIdent =
-            between (pchar '[') (pchar ']')
-                (sepBy colorAtomChar (pchar '/'))
+      /// 色識別子
+      let colorIdent =
+          between (pchar '[') (pchar ']')
+              (sepBy colorAtomChar (pchar '/'))
 
-        let supertypesJp =
-            sepBy (anyInLine |>> supertypeFromJp) (opt (pchar '・'))
+      let supertypesJp =
+          sepBy (anyInLine |>> supertypeFromJp) (opt (pchar '・'))
 
-        let cardTypesJp =
-            sepBy1 (anyInLine |>> cardTypeFromJp) (opt (pchar '・'))
+      let cardTypesJp =
+          sepBy1 (anyInLine |>> cardTypeFromJp) (opt (pchar '・'))
 
-        (*
-        let subtypeWithEnglish =
-            between (pchar '(') (pchar ')') anyInLine
+      (*
+      let subtypeWithEnglish =
+          between (pchar '(') (pchar ')') anyInLine
                 
-        let subtypeJp =
-                (attempt (anyInLine .<< subtypeWithEnglish))
-            <|> anyInLine
+      let subtypeJp =
+              (attempt (anyInLine .<< subtypeWithEnglish))
+          <|> anyInLine
                 
-        let subtypesJp =
-            sepBy subtypeJp (attempt (pchar '・') <|> ws)
-        //*)
-        let subtypeJp =
-            regex @"[^\n()]+(\(.+\))?"
-        let subtypesJp =
-            sepBy subtypeJp ((skipChar '・') <|> ws)
+      let subtypesJp =
+          sepBy subtypeJp (attempt (pchar '・') <|> ws)
+      //*)
+      let subtypeJp =
+          regex @"[^\n()]+(\(.+\))?"
+      let subtypesJp =
+          sepBy subtypeJp ((skipChar '・') <|> ws)
                 
-        /// タイプ行
-        let typeline : Parser<_> =
-            (pipe4
-                ((opt colorIdent) .>> ws)
-                supertypesJp
-                (cardTypesJp .>> ws)
-                (((many1 (anyOf "―-－～~")) >>. ws) >>. (subtypesJp .>> ws))
-                (fun ci supertypes cardtypes subtypes ->
-                    (ci, supertypes, cardtypes, subtypes)
-                ))
+      /// タイプ行
+      let typeline : Parser<_> =
+          pipe4
+            ((opt colorIdent) .>> ws)
+            supertypesJp
+            (cardTypesJp .>> ws)
+            (((many1 (anyOf "―-－～~")) >>. ws) >>. (subtypesJp .>> ws))
+            (fun ci supertypes cardtypes subtypes ->
+                (ci, supertypes, cardtypes, subtypes)
+            )
 
-        /// P/T、loyalty
-        /// */*+1 とかは未定義とみなす
-        let powTou : Parser<_> =
-            (pipe2 (pint32 .>> (pchar '/')) pint32
-                (fun p t -> (Some (p, t), None)))
-        let loyalty : Parser<_> =
-            (pstring "loyalty: ") >>. pint32
-                |>> (fun l -> (None, Some l))
+      /// P/T、loyalty
+      /// */*+1 とかは未定義とみなす
+      let powTou : Parser<_> =
+          pipe2
+            (pint32 .>> pchar '/')
+            pint32
+            (fun p t -> (Some (p, t), None))
+      let loyalty : Parser<_> =
+          (pstring "loyalty: ") >>. pint32
+          |>> (fun l -> (None, Some l))
 
-        /// FT
-        let flavorText =
-            (pstring "FT：" <|> pstring "FT:") >>. ws >>. (manyChars (noneOf "#"))
+      /// FT
+      let flavorText =
+          (pstring "FT：" <|> pstring "FT:") >>. ws >>. (manyChars (noneOf "#"))
 
-        /// コメント
-        let commentline : Parser<_> =
-            regex @"\n#[^\n]*"
+      /// コメント
+      let commentline : Parser<_> =
+          regex @"\n#[^\n]*"
 
-        /// カード
-        let anyStringWithoutEmptyLine : Parser<_> =
-            manyCharsTill anyChar (attempt (pstring @"\n\n"))
+      /// カード
+      let anyStringWithoutEmptyLine : Parser<_> =
+          manyCharsTill anyChar (attempt (pstring @"\n\n"))
 
-        let parseCardSpec : Parser<_> =
-            pipe5
-                (cardName .>> ws)
-                (manaCostJp .>> (ws .>> newline))
-                (typeline .>> newline) 
-                (anyStringWithoutEmptyLine .>> newline)
-                ((attempt powTou <|> loyalty) .>> newline)
-                (fun name manacost (colorIdent, supertypes, cardtypes, subtypes) text (pt, loyalty) ->
-                    let colorIdent = colorIdent |> Option.map colorFromAtoms
-                    {
-                        Name       = name.ToString()
-                        ManaCost   = manacost
-                        Color      = colorFromManacostOrIdentity (manacost, colorIdent)
-                        ColorIdent = colorIdent
-                        Supertype  = Set.ofList supertypes
-                        CardType   = Set.ofList cardtypes
-                        Subtype    = Set.ofList subtypes
-                        RuleText   = text
-                        PowTou     = pt
-                        Loyalty    = loyalty
-                    }
-                )
+      let parseCardSpec : Parser<_> =
+          let f name manacost typeline text (pt, loyalty) =
+              let (colorIdent, supertypes, cardtypes, subtypes) = typeline
+              let colorIdent = colorIdent |> Option.map colorFromAtoms
+              {
+                Name       = name.ToString()
+                ManaCost   = manacost
+                Color      = colorFromManacostOrIdentity (manacost, colorIdent)
+                ColorIdent = colorIdent
+                Supertype  = Set.ofList supertypes
+                CardType   = Set.ofList cardtypes
+                Subtype    = Set.ofList subtypes
+                RuleText   = text
+                PowTou     = pt
+                Loyalty    = loyalty
+              }
 
-        // regular, flip, double-faced, splits
-        let parseRegularCard : Parser<_> =
-            parseCardSpec |>> RegularCard
+          pipe5
+            (cardName                     .>> ws)
+            (manaCostJp                   .>> (ws .>> newline))
+            (typeline                     .>> newline) 
+            (anyStringWithoutEmptyLine    .>> newline)
+            ((attempt powTou <|> loyalty) .>> newline)
+            f
 
-        let parseFlipOrDoubleFacedCard : Parser<_> =
-            pipe3
-                parseCardSpec
-                ((stringReturn "<flip>" FlipCard) <|> stringReturn "<double-faced>" DoubleFacedCard)
-                parseCardSpec
-                (fun c1 ctor c2 -> ctor (c1, c2))
+      // regular, flip, double-faced, splits
+      let parseRegularCard : Parser<_> =
+          parseCardSpec |>> RegularCard
 
-        let parseSplitCard : Parser<_> =
-            sepBy1 parseCardSpec (skipString "<split>")
-            |>> SplitCard
+      let parseFlipOrDoubleFacedCard : Parser<_> =
+          let connector =
+                  (stringReturn "<flip>" FlipCard)
+              <|> (stringReturn "<double-faced>" DoubleFacedCard)
+          pipe3
+            parseCardSpec connector parseCardSpec
+            (fun c1 ctor c2 -> ctor (c1, c2))
 
-        let parseCardBody =
-            (attempt parseRegularCard)
-            <|> (attempt parseFlipOrDoubleFacedCard)
-            <|> parseSplitCard
+      let parseSplitCard : Parser<_> =
+          sepBy1 parseCardSpec (skipString "<split>")
+          |>> SplitCard
 
-        let parseCard : Parser<_> =
-            pipe3 parseCardBody (opt flavorText) (many commentline) (fun card ft comms ->
-                {
-                    Card = card
-                    Expansions = Map.empty // TODO: analyze comms and make this Map
-                })
+      let parseCardBody =
+          (attempt parseRegularCard)
+          <|> (attempt parseFlipOrDoubleFacedCard)
+          <|> parseSplitCard
+
+      let parseCard : Parser<_> =
+          let f card ft comms =
+              {
+                Card = card
+                Expansions = Map.empty // TODO: analyze comms and make this Map
+              }
+
+          pipe3
+            parseCardBody (opt flavorText) (many commentline) f
 
   module SpoilerProc =
     open System.IO
@@ -618,19 +626,19 @@ module Scripts =
         // 並び順については未実装 (例：伝説のクリーチャー・エンチャント/Legendary Enchantment Creature)
         let dictTypes =
             [
-                ("伝説の", "Legendary ")
-                ("基本", "Basic ")
-                ("氷雪", "Snow ")
-                ("ワールド", "World")
+              ("伝説の", "Legendary ")
+              ("基本", "Basic ")
+              ("氷雪", "Snow ")
+              ("ワールド", "World")
 
-                ("部族", "Tribal")
-                ("土地", "Land")
-                ("クリーチャー", "Creature")
-                ("エンチャント", "Enchantment")
-                ("アーティファクト", "Artifact")
-                ("プレインズウォーカー", "Planeswalker")
-                ("インスタント", "Instant")
-                ("ソーサリー", "Sorcery")
+              ("部族", "Tribal")
+              ("土地", "Land")
+              ("クリーチャー", "Creature")
+              ("エンチャント", "Enchantment")
+              ("アーティファクト", "Artifact")
+              ("プレインズウォーカー", "Planeswalker")
+              ("インスタント", "Instant")
+              ("ソーサリー", "Sorcery")
             ] |> Map.ofList
         (fun spoiler ->
             Regex.Replace (spoiler, "Type & Class:\t(.*?)( - .*)?\r\n", fun (mch : Match) ->
@@ -710,15 +718,15 @@ module Scripts =
     let descriptionToSpoilerCardItem =
         let attrMap =
             [
-            //    "Name: ", "Card Name"
-                "Cost: ", "Mana Cost"
-                "Type: ", "Type & Class"
-                "Rules Text: ", "Card Text"
-                "Flavor Text: ", "Flavor Text"
-                "Rarity: ", "Rarity"
-                "Pow/Tgh: ", "Pow/Tou"
-                "Illus. ", "Artist"
-                "Set Number: #", "Card #"
+            // "Name: ", "Card Name"
+              "Cost: ", "Mana Cost"
+              "Type: ", "Type & Class"
+              "Rules Text: ", "Card Text"
+              "Flavor Text: ", "Flavor Text"
+              "Rarity: ", "Rarity"
+              "Pow/Tgh: ", "Pow/Tou"
+              "Illus. ", "Artist"
+              "Set Number: #", "Card #"
             ]
             |> List.map (fun (k, v) -> (new Regex(Regex.Escape(k) + "(.*?)<br>"), v))
         let f desc =
@@ -741,10 +749,9 @@ module Scripts =
                 let description = item.Element(XName.Get "description").Value
                 let setName = (Regex.Match (description, "Set: (.*?)<br>")).Groups.[1].Value
                 if setName = "Journey Into Nyx" then
-                    yield (
-                        "Card Name:\t" + name + "\n"
-                        + (descriptionToSpoilerCardItem description)
-                    )
+                    yield
+                      ( "Card Name:\t" + name + "\n"
+                      + (descriptionToSpoilerCardItem description))
             ]
         let spoiler =
             spoilerItems |> Str.join "\n"

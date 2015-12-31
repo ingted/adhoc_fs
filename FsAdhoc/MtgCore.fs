@@ -19,9 +19,17 @@ module Core =
   // 色
   type ColorAtom =
     | White | Blue | Black | Red | Green
-
-  let allColorAtoms =
-      [ White; Blue; Black; Red; Green ]
+  with
+    static member Cases =
+        Reflection.DU<ColorAtom>.UnitCases
+        
+    static member op_Explicit (this) =
+        match this with
+        | White -> 'W'
+        | Blue  -> 'U'
+        | Black -> 'B'
+        | Red   -> 'R'
+        | Green -> 'G'
 
   type Color = Set<ColorAtom>
   let colorless = new Color([])
@@ -104,6 +112,9 @@ module Core =
     | Legendary
     | Snow
     | World
+  with
+    static member Cases =
+        Reflection.DU<Supertype>.UnitCases
 
   type CardType =
     | Artifact
@@ -114,6 +125,19 @@ module Core =
     | Instant
     | Sorcery
     | Tribal
+  with
+    static member Cases =
+        Reflection.DU<CardType>.UnitCases
+    static member op_Explicit (this) =
+        match this with
+        | Artifact     -> 'A'
+        | Creature     -> 'C'
+        | Enchantment  -> 'E'
+        | Land         -> 'L'
+        | Planeswalker -> 'P'
+        | Instant      -> 'I'
+        | Sorcery      -> 'S'
+        | Tribal       -> 'T'
 
   // シンボル
   type ManaSymbol =
@@ -163,6 +187,9 @@ module Core =
   type PhaseSymbol =
     | TapSymbol
     | UntapSymbol
+  with
+    static member Cases =
+        Reflection.DU<PhaseSymbol>.UnitCases
 
   type LoyaltySymbol =
     | LoyaltySymbol of (NumOrVar * (int -> int))
@@ -179,6 +206,9 @@ module Static =
 
   type Rarity =
     | Common | Uncommon | Rare | MythicRare
+  with
+    static member Cases =
+        Reflection.DU<Rarity>.UnitCases
 
   type SplitCard = Spec list
 
@@ -307,43 +337,14 @@ module StrExp =
     | Ja
 
   type ColorAtom with
-      static member FromChar = function
-          | 'W' -> Some White
-          | 'U' -> Some Blue
-          | 'B' -> Some Black
-          | 'R' -> Some Red
-          | 'G' -> Some Green
-          | _ -> None
-
-      member this.ToChar =
-          match this with
-          | White -> 'W'
-          | Blue  -> 'U'
-          | Black -> 'B'
-          | Red   -> 'R'
-          | Green -> 'G'
+      static member FromChar(c) =
+          ColorAtom.Cases
+          |> List.tryFind (fun ca -> (char ca) = c)
 
   type CardType with
-      static member FromChar = function
-          | 'A' -> Artifact
-          | 'C' -> Creature
-          | 'E' -> Enchantment
-          | 'L' -> Land
-          | 'P' -> Planeswalker
-          | 'I' -> Instant
-          | 'S' -> Sorcery
-          | 'T' -> Tribal
-          | _ -> failwith "unknown cardtype"
-      member this.ToChar =
-          match this with
-          | Artifact     -> 'A'
-          | Creature     -> 'C'
-          | Enchantment  -> 'E'
-          | Land         -> 'L'
-          | Planeswalker -> 'P'
-          | Instant      -> 'I'
-          | Sorcery      -> 'S'
-          | Tribal       -> 'T'
+      static member FromChar(c) =
+          CardType.Cases
+          |> List.tryFind (fun ct -> (char ct) = c)
 
   [<AutoOpen>]
   module Japanese =

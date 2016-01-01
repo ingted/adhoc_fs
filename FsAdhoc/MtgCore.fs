@@ -156,17 +156,13 @@ module Core =
     /// Represents "2 life".
     /// This's used as half of hybrid mana symbol to represent a Phyrexian mana symbol.
     | TwoLife
-    /// {Symbol/2}, such as {白/2} (ex. 《Little Girl》)
-    | Half of ManaSymbol
-    /// {∞} (ex. 《Mos Lotus》)
-    //| InfiniteManaSymbol
+    /// {M/2}, such as {W/2} (ex. 《Little Girl》)
+    //| Half of ManaSymbol
+    /// {∞} (《Mos Lotus》)
+    //| Infinite
   with
     static member (/) (lhs, rhs) =
         Hybrid (lhs, rhs)
-
-    static member (/) (lhs, rhs: int) =
-        assert (rhs = 2)
-        Half lhs
 
     static member PhyrexianManaSymbol clra =
         (Monocolored clra) / TwoLife
@@ -177,8 +173,6 @@ module Core =
             ColorPayable.Atom ca
         | Hybrid (lhs, rhs) ->
             ColorPayable.Or [lhs.ColorPayable; rhs.ColorPayable]
-        | Half src ->
-            src.ColorPayable
         | Unspecified _
         | Var _
         | Colorless

@@ -99,9 +99,6 @@ module Handmade =
             <|> grouped
             )
 
-        let halfSymbol =
-            atomicSymbol .>> (skipString "/2") |>> ManaSymbol.Half
-
         let hybrid1 lhs rhs =
             ManaSymbol.Hybrid (lhs, rhs)
 
@@ -112,8 +109,7 @@ module Handmade =
               (List.fold hybrid1)
 
         internalManaSymbolRef :=
-                attempt halfSymbol
-            <|> attempt hybridMany
+                attempt hybridMany
             <|> atomicSymbol
 
         grouped
@@ -342,7 +338,6 @@ module Handmade =
               "{W}{U}{B}{R}{G}"     , [w; u; b; r; g]
               "(白)(青)(黒)(赤)(緑)", [w; u; b; r; g]
               "{W}{W}{U}"           , [w; w; u]
-              "{W/2}"               , [w/2]
               "{X}"                 , [ManaSymbol.Var 'X']
               "{S}"                 , [s]
               "{U/P}"               , [u/p]

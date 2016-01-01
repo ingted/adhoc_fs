@@ -239,6 +239,33 @@ module Static =
       PowTou : (int * int) option
       Loyalty : int option
     }
+  with
+    static member ofMinimal (name, ruleText) =
+        { Name          = name
+          ManaCost      = []
+          Color         = colorless
+          ColorIdent    = None
+          Supertype     = Set.empty
+          CardType      = Set.empty
+          Subtype       = Set.empty
+          RuleText      = ruleText
+          PowTou        = None
+          Loyalty       = None
+        }
+    static member ofCreature name manaCost subtypes ruleText powTou =
+        { Spec.ofMinimal (name, ruleText) with
+            ManaCost    = manaCost
+            CardType    = Set.singleton Creature
+            Subtype     = Set.ofSeq subtypes
+            PowTou      = Some powTou
+        }
+    static member ofPlaneswalker name manaCost subtype ruleText loyalty =
+        { Spec.ofMinimal (name, ruleText) with
+            ManaCost    = manaCost
+            CardType    = Set.singleton Planeswalker
+            Subtype     = Set.singleton subtype
+            Loyalty     = Some loyalty
+        }
 
   type SplitCard = Spec list
 
@@ -257,6 +284,9 @@ module Static =
       Card : Card
       Expansions : Map<Expansion, (Rarity * FlavorText)>
     }
+  with
+    static member ofCard (card) =
+      { Card = card; Expansions = Map.empty }
 
 // 動的表現、つまりゲーム中のものを表現する型
 // 使い道なし

@@ -248,11 +248,14 @@ module Handmade =
 
     /// カード
     let cardSpec: Parser<_> = parse {
-        let! name     = cardName         .>> blankMany
+        let nl = skipNewlineAndCommentLines
+        let typeLine = attempt En.typeLine <|> Ja.typeLine
+
+        let! name     = cardName         .>> blankMany .>> optional (attempt nl)
         let! manaCost = manaCost         .>> blankMany
-        let! typeLine = Ja.typeLine      .>> skipNewline
-        let! ruleText = ruleTextLines    .>> skipNewline
-        let! ptl      = powTouLoyalty    .>> skipNewline
+        let! typeLine = typeLine         .>> nl
+        let! ruleText = ruleTextLines    .>> nl
+        let! ptl      = powTouLoyalty    .>> nl
 
         let (colorIdent, supertypes, cardtypes, subtypes) = typeLine
         let colorIdent = colorIdent |> Option.map colorFromAtoms
@@ -293,10 +296,8 @@ module Handmade =
     let cardSingle = parse {
         let! card = cardBody
         let! ft   = opt flavorTextLines
-        return
-          { Card = card
-            Expansions = Map.empty // TODO: analyze comms and make this Map
-          }
+        // TODO: analyze comments and build expansions
+        return SingleCardSpec.ofCard(card)
       }
 
     let skipBlankLines1 =
@@ -313,11 +314,6 @@ module Handmade =
         >>. cardList
         .>> optional skipBlankLines1
         .>> eof
-
-    let parseCardList text =
-        let p =
-          manaCost
-        run p text
 
     let test () =
         let allSuccess p cases =
@@ -403,11 +399,20 @@ module Handmade =
               "Legendary Snow Enchantment Creature -- Human Warrior"
                 , ( None, [Legendary; Supertype.Snow]
                   , [Enchantment; Creature], ["Human"; "Warrior"])
-              "[W/U] Artifact ~~~ Equipment"
+              "[W/U] Artifact~Equipment"
                 , (Some[White; Blue], [], [Artifact], ["Equipment"])
             ]
             |> List.map (fun (expr, r) -> ("\r\n" + expr, r))
             |> allSuccess (En.typeLine)
+
+            [ """《灰色熊/Grizzly Bear》 (1)(緑)
+                  クリーチャー ― 熊(Bear)
+                  2/2
+              """
+              , let mc = [ManaSymbol.Unspecified 1u; ManaSymbol.Monocolored Green] in
+                  RegularCard (Spec.ofCreature "灰色熊/Grizzly Bear" mc ["熊"] "" (2, 2))
+            ] |> allSuccess (cardBody)
+
 
         ()
 
@@ -416,7 +421,8 @@ module Handmade =
       CardSyntaxParser.test ()
       let text = File.ReadAllText (@"D:\Docs\archive\_nobak\__testdata.txt")
       let result =
-          CardSyntaxParser.parseCardList text
+          let p = CardSyntaxParser.cardListFile
+          run p text
       match result with
       | ParserResult.Success (value, stat, pos) ->
           ()

@@ -71,48 +71,28 @@ module Handmade =
         <|> colorAtomCharFrom (ColorAtom.JaChars)
         )
 
-    let twoLifeSymbol =
-        anyOf "PΦ" >>% ManaSymbol.TwoLife
-
-    let snowManaSymbol =
-        anyOf "S氷" >>% ManaSymbol.Snow
-
     let manaSymbol =
-        let internalManaSymbol, internalManaSymbolRef =
-            createParserForwardedToRef ()
-
-        let grouped =
-            ( attempt
-                (betweenParen '{' '}' internalManaSymbol)
-            <|> (betweenParen '(' ')' internalManaSymbol)
+        let minimal =
+            (   (puint32          |>> ManaSymbol.Unspecified)
+            <|> (colorAtomChar    |>> ManaSymbol.Monocolored)
+            <|> (skipChar 'C'     >>% ManaSymbol.Colorless)
+            <|> (anyOf "PΦ"      >>% ManaSymbol.TwoLife)
+            <|> (anyOf "S氷"      >>% ManaSymbol.Snow)
+            <|> (anyOf "XYZ"      |>> ManaSymbol.Var)
             )
 
-        let atomicSymbol =
-            (   (puint32
-                  |>> ManaSymbol.Unspecified)
-            <|> (colorAtomChar
-                  |>> ManaSymbol.Monocolored)
-            <|> twoLifeSymbol
-            <|> snowManaSymbol
-            <|> (anyOf "XYZ"
-                  |>> ManaSymbol.Var)
-            <|> grouped
-            )
-
-        let hybrid1 lhs rhs =
-            ManaSymbol.Hybrid (lhs, rhs)
-
-        let hybridMany =
+        let hybridMany1 =
             pipe2
-              (atomicSymbol .>> (skipChar '/'))
-              (sepBy1 atomicSymbol (skipChar '/'))   // 白/青/黒 のような並列を認める
-              (List.fold hybrid1)
+              minimal 
+              (many (skipChar '/' >>. minimal))
+              (List.fold (curry2 ManaSymbol.Hybrid))
 
-        internalManaSymbolRef :=
-                attempt hybridMany
-            <|> atomicSymbol
+        let symbol = hybridMany1
 
-        grouped
+        ( attempt
+            (betweenParen '{' '}' symbol)
+        <|> (betweenParen '(' ')' symbol)
+        )
 
     let manaCost: Parser<_> =
         many manaSymbol

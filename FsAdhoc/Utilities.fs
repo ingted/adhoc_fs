@@ -23,6 +23,8 @@ module Misc =
   ///flip applying order of 2 arguments
   let inline flip f x y = f y x
 
+  let inline curry2 f x y = f (x, y)
+
   ///apply f to a value x; then return x
   let tap f x =
       do f x

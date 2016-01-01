@@ -238,6 +238,8 @@ module Seq =
   let seqBreakable = new SeqWithFlowControlBuilder()
 
 module List =
+  let cons h t = h :: t
+
   let maxWithIndex f =
       Seq.indexed >> List.ofSeq >> (List.maxBy f)
 

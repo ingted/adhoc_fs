@@ -223,20 +223,10 @@ module Static =
       | PowTou of (int * int)
       | Loyalty of int
 
-  type SplitCard = Spec list
+  type FlavorText =
+      string
 
-  /// represents a "physical" card
-  and Card =
-    | RegularCard     of Spec
-    | FlipCard        of Spec * Spec
-
-    /// FrontFace, BackFace
-    | DoubleFacedCard of Spec * Spec
-        
-    /// LeftHalf, RightHalf
-    | SplitCard       of SplitCard
-
-  and Spec = {
+  type Spec = {
       Name : string
       ManaCost : ManaSymbol list
       Color : Color
@@ -250,13 +240,23 @@ module Static =
       Loyalty : int option
     }
 
-  and SingleCardSpec = {
+  type SplitCard = Spec list
+
+  /// represents a "physical" card
+  type Card =
+    | RegularCard     of Spec
+    | FlipCard        of Spec * Spec
+
+    /// FrontFace, BackFace
+    | DoubleFacedCard of Spec * Spec
+        
+    /// LeftHalf, RightHalf
+    | SplitCard       of SplitCard
+
+  type SingleCardSpec = {
       Card : Card
       Expansions : Map<Expansion, (Rarity * FlavorText)>
     }
-
-  and FlavorText =
-      string
 
 // 動的表現、つまりゲーム中のものを表現する型
 // 使い道なし

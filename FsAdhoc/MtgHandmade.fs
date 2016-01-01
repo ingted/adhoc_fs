@@ -38,7 +38,28 @@ module Handmade =
     let betweenParen l r =
         between (skipChar l) (skipChar r)
 
-    ///Unwrap each elements in tuple of options if able
+    /// Apply `choice ps`.
+    /// If ps.[i] has succeeded and resulted in `x` then return ``fs.[i] x``.
+    let lookupUnzip ps fs =
+        assert ((ps |> Seq.length) = (fs |> Seq.length))
+        (ps, fs)
+        ||> Seq.map2 (|>>)
+        |> choice
+
+    let lookupStrMap strs vals =
+        lookupUnzip (strs |> List.map skipString) (vals |> List.map konst)
+
+    let inline choiceEnum<'T> =
+        lookupStrMap
+          Reflection.DU<'T>.Names
+          Reflection.DU<'T>.UnitCases
+          
+    /// Same as ``sepBy p sep`` except for this never fails
+    let safeSepBy p sep =
+        opt (attempt (pipe2 p (many (attempt (sep >>. p))) List.cons))
+        |>> Option.getOr []
+
+    ///Unwrap each element in tuple of options if able
     let unwrapOption2 = function
       | (Some v0, Some v1) -> Some (v0, v1)
       | _ -> None
@@ -185,34 +206,45 @@ module Handmade =
         >>. sepBy line skipNewlineAndCommentLines
         |>> Str.join "\r\n"
 
+    [<AutoOpen>]
+    module En =
+      let supertypeList =
+          let p = lookupStrMap Supertype.Names Supertype.Cases
+          safeSepBy p blankMany1 
+
+      let cardTypeList =
+          safeSepBy choiceEnum<CardType> blankMany1
+
+      let subtype =
+          many1Chars (letter <|> digit <|> anyOf "'-_")
+
+      let subtypeList =
+          sepBy subtype blankMany1
+
+      let typeLine =
+          typeLineTmpl supertypeList cardTypeList subtypeList
+
     module Ja =
       let supertypeList =
-          let p =
-              (Supertype.Cases, Supertype.JaNames)
-              ||> List.map2 (fun st name -> skipString name >>% st)
-              |> choice
+          safeSepBy
+            (lookupStrMap Supertype.JaNames Supertype.Cases)
+            (optional skipDotOrBlank)
 
-          many (p .>> optional skipDotOrBlank)
-
-      let cardtypeList =
-          let p =
-              (CardType.Cases, CardType.JaNames)
-              ||> List.map2 (fun ct name -> skipString name >>% ct)
-              |> choice
-
-          sepBy1 p skipDotOrBlank
+      let cardTypeList =
+          safeSepBy
+            (lookupStrMap CardType.JaNames CardType.Cases)
+            (optional skipDotOrBlank)
 
       /// 英名併記を許可
       let subtype =
-          let enName =
-              betweenParen '(' ')' (many letter)
-          many1Chars letter .>> optional enName
+          many1Chars letter
+          .>> optional (betweenParen '(' ')' En.subtype)
 
       let subtypeList =
-          sepBy subtype (optional skipDotOrBlank)
+          sepBy subtype skipDotOrBlank
 
       let typeLine =
-          typeLineTmpl supertypeList cardtypeList subtypeList
+          typeLineTmpl supertypeList cardTypeList subtypeList
 
     /// カード
     let cardSpec: Parser<_> = parse {
@@ -300,7 +332,7 @@ module Handmade =
                   failwithf "Failed parsing:\r\ninput = %s\r\n%s" expr message
               )
 
-        let ``test for manaCost`` =
+        do
             let (w, u, b, r, g) =
                 ( ManaSymbol.Monocolored White
                 , ManaSymbol.Monocolored Blue
@@ -325,18 +357,58 @@ module Handmade =
               "{2/W/U}"             , [(num 2u)/w/u]
             ] |> allSuccess manaCost
 
-        let ``test for colorIdent`` =
+        do
             [ "[]"       , []
               "[W]"      , [White]
               "[W/U]"    , [White; Blue]
               "[W/W/U]"  , [White; White; Blue]
             ] |> allSuccess colorIdent
 
-        let ``test for supertypes`` =
+        do
+            [ "Legendary Creature"      , [Legendary]
+              "World Basic Land"        , [World; Basic]
+            ] |> allSuccess (En.supertypeList)
+
             [ "伝説の"                  , [Legendary]
               "ワールド・基本土地"      , [World; Basic]
               "伝説の氷雪・部族・土地"  , [Legendary; Supertype.Snow]
             ] |> allSuccess (Ja.supertypeList)
+
+            [ "Creature"                , [Creature]
+              "Artifact Land"           , [Artifact; Land]
+            ] |> allSuccess (En.cardTypeList)
+
+            [ "クリーチャー"            , [Creature]
+              "土地・エンチャント"      , [Land; Enchantment]
+              "部族アーティファクト"    , [Tribal; Artifact]
+            ] |> allSuccess (Ja.cardTypeList)
+
+            [ "インスタント"
+                , (None, [], [Instant], [])
+              "プレインズウォーカー ― ティボルト(Tibolt)"
+                , (None, [], [Planeswalker], ["ティボルト"])
+              "伝説の氷雪クリーチャーエンチャント ― 人間・戦士"
+                , ( None, [Legendary; Supertype.Snow]
+                  , [Creature; Enchantment], ["人間"; "戦士"])
+              "[白/青] アーティファクト ― 装備品(Equipment)"
+                , (Some[White; Blue], [], [Artifact], ["装備品"])
+            ]
+            |> List.map (fun (expr, r) -> ("\r\n" + expr, r)) 
+            |> allSuccess (Ja.typeLine)
+            
+            [ "Instant"
+                , (None, [], [Instant], [])
+              "Planeswalker -- Tibolt"
+                , (None, [], [Planeswalker], ["Tibolt"])
+              "Legendary Snow Enchantment Creature -- Human Warrior"
+                , ( None, [Legendary; Supertype.Snow]
+                  , [Enchantment; Creature], ["Human"; "Warrior"])
+              "[W/U] Artifact ~~~ Equipment"
+                , (Some[White; Blue], [], [Artifact], ["Equipment"])
+            ]
+            |> List.map (fun (expr, r) -> ("\r\n" + expr, r))
+            |> allSuccess (En.typeLine)
+
         ()
 
   open System.IO

@@ -116,6 +116,9 @@ module Core =
     static member Cases =
         Reflection.DU<Supertype>.UnitCases
 
+    static member Names =
+        Reflection.DU<Supertype>.Names
+
   type CardType =
     | Artifact
     | Creature
@@ -128,6 +131,10 @@ module Core =
   with
     static member Cases =
         Reflection.DU<CardType>.UnitCases
+        
+    static member Names =
+        Reflection.DU<CardType>.Names
+
     static member op_Explicit (this) =
         match this with
         | Artifact     -> 'A'
@@ -379,16 +386,18 @@ module StrExp =
             Supertype.Cases |> List.tryFind (fun st -> Supertype.ToJaName st = jaName)
 
     type CardType with
+        static member ToJaName = function
+          | Artifact        -> "アーティファクト"
+          | Creature        -> "クリーチャー"
+          | Enchantment     -> "エンチャント"
+          | Land            -> "土地"
+          | Planeswalker    -> "プレインズウォーカー"
+          | Instant         -> "インスタント"
+          | Sorcery         -> "ソーサリー"
+          | Tribal          -> "部族"
+
         static member JaNames =
-            [ "アーティファクト"
-              "クリーチャー"
-              "エンチャント"
-              "プレインズウォーカー"
-              "土地"
-              "インスタント"
-              "ソーサリー"
-              "部族"
-            ]
+            CardType.Cases |> List.map (CardType.ToJaName)
 
         static member FromJaName (jaName) =
             (CardType.JaNames, CardType.Cases) |> List.tryAssocUnzip jaName

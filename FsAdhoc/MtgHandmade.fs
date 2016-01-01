@@ -300,7 +300,7 @@ module Handmade =
                   failwithf "Failed parsing:\r\ninput = %s\r\n%s" expr message
               )
 
-        let ``manaCost`` =
+        let ``test for manaCost`` =
             let (w, u, b, r, g) =
                 ( ManaSymbol.Monocolored White
                 , ManaSymbol.Monocolored Blue
@@ -308,10 +308,7 @@ module Handmade =
                 , ManaSymbol.Monocolored Red
                 , ManaSymbol.Monocolored Green
                 )
-            let (s, p) =
-                ( ManaSymbol.Snow
-                , ManaSymbol.TwoLife
-                )
+            let p = ManaSymbol.TwoLife
             let num = ManaSymbol.Unspecified
             [ ""                    , []
               "{1}"                 , [num 1u]
@@ -321,12 +318,19 @@ module Handmade =
               "{W}{W}{U}"           , [w; w; u]
               "{X}"                 , [ManaSymbol.Var 'X']
               "{C}"                 , [ManaSymbol.Colorless]
-              "{S}"                 , [s]
+              "{S}"                 , [ManaSymbol.Snow]
               "{U/P}"               , [u/p]
               "{W/U}"               , [w/u]
               "{2/W}"               , [(num 2u)/w]
               "{2/W/U}"             , [(num 2u)/w/u]
             ] |> allSuccess manaCost
+
+        let ``test for colorIdent`` =
+            [ "[]"       , []
+              "[W]"      , [White]
+              "[W/U]"    , [White; Blue]
+              "[W/W/U]"  , [White; White; Blue]
+            ] |> allSuccess colorIdent
 
         ()
 

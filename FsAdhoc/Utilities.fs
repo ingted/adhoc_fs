@@ -665,10 +665,23 @@ module Reflection =
 module FParsec =
   type Parser<'T> = Parser<'T, unit>
 
+  module ErrorMessageList =
+    let rec toList (self: ErrorMessageList) =
+        if self = null
+        then []
+        else (self.Head :: toList self.Tail)
+
+  /// 改行ではない空白類
+  let blankMany: Parser<_> =
+      manyChars (anyOf " \t　")
+
+  let blankMany1 =
+      notEmpty blankMany
+
+  let skipEmptyLine =
+      blankMany .>> skipNewline
+      |>> ignore
+
   /// 改行を除く任意の文字列
   let anyInLine: Parser<_> =
-      manyChars (noneOf "\n")
-
-  /// 改行を除く空白
-  let ws: Parser<_> =
-      skipMany (anyOf " \t")
+      manyChars (noneOf "\r\n")

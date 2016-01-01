@@ -210,6 +210,10 @@ module Static =
     static member Cases =
         Reflection.DU<Rarity>.UnitCases
 
+  type PowTouLoyalty =
+      | PowTou of (int * int)
+      | Loyalty of int
+
   type SplitCard = Spec list
 
   /// represents a "physical" card
@@ -239,10 +243,11 @@ module Static =
 
   and SingleCardSpec = {
       Card : Card
-      Expansions : Map<Expansion, (Rarity * flavor_t)>
+      Expansions : Map<Expansion, (Rarity * FlavorText)>
     }
 
-  and flavor_t = string
+  and FlavorText =
+      string
 
 // 動的表現、つまりゲーム中のものを表現する型
 // 使い道なし
@@ -330,6 +335,7 @@ module Dynamic =
 [<AutoOpen>]
 module StrExp =
   /// language tag
+  /// Not used
   type Lang =
     /// en_US (default)
     | En
@@ -349,8 +355,24 @@ module StrExp =
           CardType.Cases
           |> List.tryFind (fun ct -> (char ct) = c)
 
+  type SymbolCharSet =
+    {
+      ColorAtoms        : char list
+      SnowSymbol        : char
+      TwoLifeSymbol     : char
+      TypeLineSeparator : string
+    }
+
+  let symbolCharSet =
+    {
+      ColorAtoms        = ColorAtom.Chars
+      SnowSymbol        = 'S'
+      TwoLifeSymbol     = 'P'
+      TypeLineSeparator = "-－―~～"
+    }
+
   [<AutoOpen>]
-  module Japanese =
+  module Ja =
     type ColorAtom with
         static member JaChars =
             [ '白'; '青'; '黒'; '赤'; '緑' ]
@@ -379,3 +401,11 @@ module StrExp =
 
         static member FromJaName (jaName) =
             (CardType.JaNames, CardType.Cases) |> List.tryAssocUnzip jaName
+
+    type SymbolCharSet with
+      static member Ja =
+        { symbolCharSet with
+            ColorAtoms    = ColorAtom.JaChars
+            SnowSymbol    = '氷'
+            TwoLifeSymbol = 'Φ'
+        }

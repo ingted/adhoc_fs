@@ -367,11 +367,16 @@ module StrExp =
             (ColorAtom.JaChars, ColorAtom.Cases) |> List.tryAssocUnzip jaChar
 
     type Supertype with
+        static member ToJaName = function
+          | Basic           -> "基本"
+          | Legendary       -> "伝説の"
+          | Supertype.Snow  -> "氷雪"
+          | World           -> "ワールド"
         static member JaNames =
-            [ "伝説の"; "基本"; "氷雪"; "ワールド" ]
+            Supertype.Cases |> List.map Supertype.ToJaName
 
         static member FromJaName (jaName) =
-            (Supertype.JaNames, Supertype.Cases) |> List.tryAssocUnzip jaName
+            Supertype.Cases |> List.tryFind (fun st -> Supertype.ToJaName st = jaName)
 
     type CardType with
         static member JaNames =

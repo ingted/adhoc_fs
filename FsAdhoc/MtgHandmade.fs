@@ -192,7 +192,7 @@ module Handmade =
               ||> List.map2 (fun st name -> skipString name >>% st)
               |> choice
 
-          sepBy p (optional skipDotOrBlank)
+          many (p .>> optional skipDotOrBlank)
 
       let cardtypeList =
           let p =
@@ -332,6 +332,11 @@ module Handmade =
               "[W/W/U]"  , [White; White; Blue]
             ] |> allSuccess colorIdent
 
+        let ``test for supertypes`` =
+            [ "伝説の"                  , [Legendary]
+              "ワールド・基本土地"      , [World; Basic]
+              "伝説の氷雪・部族・土地"  , [Legendary; Supertype.Snow]
+            ] |> allSuccess (Ja.supertypeList)
         ()
 
   open System.IO

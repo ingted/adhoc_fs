@@ -142,40 +142,48 @@ module Core =
   // シンボル
   type ManaSymbol =
     /// {0}, {1}, ..., {15}, ...
-    | NumManaSymbol of Natural
+    | Unspecified of Natural
     /// {X}, {Y}, {Z}
-    | VarManaSymbol of string
+    | Var of char
     /// {W}, {U}, {B}, {R}, {G}
-    | ColorManaSymbol of ColorAtom
-    /// {A/B}, such as {W/U}, {2/B}, {R/P}
-    | HybridManaSymbol of ManaSymbol * ManaSymbol
+    | Monocolored of ColorAtom
+    /// {W/U}, {2/B}, {R/P}, ...
+    | Hybrid of ManaSymbol * ManaSymbol
+    /// {C}
+    | Colorless
     /// {S}
-    | SnowManaSymbol
-    /// represents "2 life"; This's used as half of HybridManaSymbol, to represent Phyrexian Mana Symbol.
-    | TwoLifeSymbol
+    | Snow
+    /// Represents "2 life".
+    /// This's used as half of hybrid mana symbol to represent a Phyrexian mana symbol.
+    | TwoLife
     /// {Symbol/2}, such as {白/2} (ex. 《Little Girl》)
-    | HalfManaSymbol of ManaSymbol
+    | Half of ManaSymbol
     /// {∞} (ex. 《Mos Lotus》)
     //| InfiniteManaSymbol
   with
     static member (/) (lhs, rhs) =
-        HybridManaSymbol (lhs, rhs)
+        Hybrid (lhs, rhs)
+
+    static member (/) (lhs, rhs: int) =
+        assert (rhs = 2)
+        Half lhs
 
     static member PhyrexianManaSymbol clra =
-        (ColorManaSymbol clra) / TwoLifeSymbol
+        (Monocolored clra) / TwoLife
 
     member this.ColorPayable =
         match this with
-        | ColorManaSymbol ca ->
+        | Monocolored ca ->
             ColorPayable.Atom ca
-        | HybridManaSymbol (lhs, rhs) ->
+        | Hybrid (lhs, rhs) ->
             ColorPayable.Or [lhs.ColorPayable; rhs.ColorPayable]
-        | HalfManaSymbol src ->
+        | Half src ->
             src.ColorPayable
-        | NumManaSymbol _
-        | VarManaSymbol _
-        | SnowManaSymbol
-        | TwoLifeSymbol ->
+        | Unspecified _
+        | Var _
+        | Colorless
+        | Snow
+        | TwoLife ->
             ColorPayable.Colorless
     member this.Color =
         this.ColorPayable.ToColor()

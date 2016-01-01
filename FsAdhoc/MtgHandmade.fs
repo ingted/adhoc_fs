@@ -72,10 +72,10 @@ module Handmade =
         )
 
     let twoLifeSymbol =
-        anyOf "PΦ" >>% TwoLifeSymbol
+        anyOf "PΦ" >>% ManaSymbol.TwoLife
 
     let snowManaSymbol =
-        anyOf "S氷" >>% SnowManaSymbol
+        anyOf "S氷" >>% ManaSymbol.Snow
 
     let manaSymbol =
         let internalManaSymbol, internalManaSymbolRef =
@@ -89,21 +89,21 @@ module Handmade =
 
         let atomicSymbol =
             (   (puint32
-                  |>> NumManaSymbol)
+                  |>> ManaSymbol.Unspecified)
             <|> (colorAtomChar
-                  |>> ColorManaSymbol)
+                  |>> ManaSymbol.Monocolored)
             <|> twoLifeSymbol
             <|> snowManaSymbol
             <|> (anyOf "XYZ"
-                  |>> (string >> VarManaSymbol))
+                  |>> ManaSymbol.Var)
             <|> grouped
             )
 
         let halfSymbol =
-            atomicSymbol .>> (skipString "/2") |>> HalfManaSymbol
+            atomicSymbol .>> (skipString "/2") |>> ManaSymbol.Half
 
         let hybrid1 lhs rhs =
-            ManaSymbol.HybridManaSymbol (lhs, rhs)
+            ManaSymbol.Hybrid (lhs, rhs)
 
         let hybridMany =
             pipe2
@@ -326,24 +326,24 @@ module Handmade =
 
         let ``manaCost`` =
             let (w, u, b, r, g) =
-                ( ColorManaSymbol White
-                , ColorManaSymbol Blue
-                , ColorManaSymbol Black
-                , ColorManaSymbol Red
-                , ColorManaSymbol Green
+                ( ManaSymbol.Monocolored White
+                , ManaSymbol.Monocolored Blue
+                , ManaSymbol.Monocolored Black
+                , ManaSymbol.Monocolored Red
+                , ManaSymbol.Monocolored Green
                 )
             let (s, p) =
-                ( SnowManaSymbol
-                , TwoLifeSymbol
+                ( ManaSymbol.Snow
+                , ManaSymbol.TwoLife
                 )
-            let num = NumManaSymbol
+            let num = ManaSymbol.Unspecified
             [ "{1}"                 , [num 1u]
               "{15}"                , [num 15u]
               "{W}{U}{B}{R}{G}"     , [w; u; b; r; g]
               "(白)(青)(黒)(赤)(緑)", [w; u; b; r; g]
               "{W}{W}{U}"           , [w; w; u]
-              "{W/2}"               , [HalfManaSymbol w]
-              "{X}"                 , [VarManaSymbol "X"]
+              "{W/2}"               , [w/2]
+              "{X}"                 , [ManaSymbol.Var 'X']
               "{S}"                 , [s]
               "{U/P}"               , [u/p]
               "{W/U}"               , [w/u]

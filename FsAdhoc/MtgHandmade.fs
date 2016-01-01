@@ -313,16 +313,19 @@ module Handmade =
                 , ManaSymbol.TwoLife
                 )
             let num = ManaSymbol.Unspecified
-            [ "{1}"                 , [num 1u]
+            [ ""                    , []
+              "{1}"                 , [num 1u]
               "{15}"                , [num 15u]
               "{W}{U}{B}{R}{G}"     , [w; u; b; r; g]
               "(白)(青)(黒)(赤)(緑)", [w; u; b; r; g]
               "{W}{W}{U}"           , [w; w; u]
               "{X}"                 , [ManaSymbol.Var 'X']
+              "{C}"                 , [ManaSymbol.Colorless]
               "{S}"                 , [s]
               "{U/P}"               , [u/p]
               "{W/U}"               , [w/u]
               "{2/W}"               , [(num 2u)/w]
+              "{2/W/U}"             , [(num 2u)/w/u]
             ] |> allSuccess manaCost
 
         ()

@@ -143,7 +143,7 @@ module Core =
   type ManaSymbol =
     /// {0}, {1}, ..., {15}, ...
     | NumManaSymbol of Natural
-    /// {X}, {Y}, {Z}, or another
+    /// {X}, {Y}, {Z}
     | VarManaSymbol of string
     /// {W}, {U}, {B}, {R}, {G}
     | ColorManaSymbol of ColorAtom
@@ -160,7 +160,7 @@ module Core =
   with
     static member (/) (lhs, rhs) =
         HybridManaSymbol (lhs, rhs)
-                
+
     static member PhyrexianManaSymbol clra =
         (ColorManaSymbol clra) / TwoLifeSymbol
 
@@ -355,22 +355,6 @@ module StrExp =
           CardType.Cases
           |> List.tryFind (fun ct -> (char ct) = c)
 
-  type SymbolCharSet =
-    {
-      ColorAtoms        : char list
-      SnowSymbol        : char
-      TwoLifeSymbol     : char
-      TypeLineSeparator : string
-    }
-
-  let symbolCharSet =
-    {
-      ColorAtoms        = ColorAtom.Chars
-      SnowSymbol        = 'S'
-      TwoLifeSymbol     = 'P'
-      TypeLineSeparator = "-－―~～"
-    }
-
   [<AutoOpen>]
   module Ja =
     type ColorAtom with
@@ -401,11 +385,3 @@ module StrExp =
 
         static member FromJaName (jaName) =
             (CardType.JaNames, CardType.Cases) |> List.tryAssocUnzip jaName
-
-    type SymbolCharSet with
-      static member Ja =
-        { symbolCharSet with
-            ColorAtoms    = ColorAtom.JaChars
-            SnowSymbol    = '氷'
-            TwoLifeSymbol = 'Φ'
-        }

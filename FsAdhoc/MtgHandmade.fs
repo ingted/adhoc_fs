@@ -60,76 +60,78 @@ module Handmade =
 
         betweenParen '《' '》' content
 
-    let colorAtomCharFrom (charset: SymbolCharSet) =
+    let colorAtomCharFrom (chars) =
         let ps =
-          (ColorAtom.Cases, charset.ColorAtoms)
+          (ColorAtom.Cases, chars)
           ||> List.map2 (fun ca c -> skipChar c >>% ca)
         choice ps
 
     let colorAtomChar: Parser<_> =
-        colorAtomCharFrom symbolCharSet
-        <|> colorAtomCharFrom SymbolCharSet.Ja
+        (   colorAtomCharFrom (ColorAtom.Chars)
+        <|> colorAtomCharFrom (ColorAtom.JaChars)
+        )
 
-    /// マナ・シンボル
-    let manaSymbolFrom (charset: SymbolCharSet) =
-        let symbol, symbolRef =
-            FParsec.Primitives.createParserForwardedToRef ()
+    let twoLifeSymbol =
+        anyOf "PΦ" >>% TwoLifeSymbol
 
-        let groupSymbol =
+    let snowManaSymbol =
+        anyOf "S氷" >>% SnowManaSymbol
+
+    let manaSymbol =
+        let internalManaSymbol, internalManaSymbolRef =
+            createParserForwardedToRef ()
+
+        let grouped =
             ( attempt
-                (between (pchar '{') (pchar '}') symbol)
-            <|> (between (pchar '(') (pchar ')') symbol)
+                (betweenParen '{' '}' internalManaSymbol)
+            <|> (betweenParen '(' ')' internalManaSymbol)
             )
 
         let atomicSymbol =
             (   (puint32
                   |>> NumManaSymbol)
-            <|> (colorAtomCharFrom charset
+            <|> (colorAtomChar
                   |>> ColorManaSymbol)
-            <|> (charReturn (charset.TwoLifeSymbol) TwoLifeSymbol)
-            <|> (charReturn (charset.SnowSymbol)    SnowManaSymbol)
-            <|> (letter
+            <|> twoLifeSymbol
+            <|> snowManaSymbol
+            <|> (anyOf "XYZ"
                   |>> (string >> VarManaSymbol))
-            <|> groupSymbol
+            <|> grouped
             )
 
         let halfSymbol =
-            atomicSymbol .>> (pstring "/2") |>> HalfManaSymbol
+            atomicSymbol .>> (skipString "/2") |>> HalfManaSymbol
 
         let hybrid1 lhs rhs =
             ManaSymbol.HybridManaSymbol (lhs, rhs)
 
         let hybridMany =
             pipe2
-              (atomicSymbol .>> (pchar '/'))
-              (sepBy1 atomicSymbol (pchar '/'))   // 白/青/黒 のような並列を認める
+              (atomicSymbol .>> (skipChar '/'))
+              (sepBy1 atomicSymbol (skipChar '/'))   // 白/青/黒 のような並列を認める
               (List.fold hybrid1)
 
-        symbolRef :=
+        internalManaSymbolRef :=
                 attempt halfSymbol
             <|> attempt hybridMany
             <|> atomicSymbol
 
-        groupSymbol
-
-    let manaSymbol: Parser<_> =
-        manaSymbolFrom symbolCharSet
-        <|> manaSymbolFrom SymbolCharSet.Ja
+        grouped
 
     let manaCost: Parser<_> =
         many manaSymbol
 
-    let colorIdent charset =
+    let colorIdent =
         betweenParen '[' ']'
-          (sepBy (colorAtomCharFrom charset) (skipChar '/'))
+          (sepBy colorAtomChar (skipChar '/'))
 
-    let typeLineTmpl (charset: SymbolCharSet) supertypeList cardtypeList subtypeList =
+    let typeLineTmpl supertypeList cardtypeList subtypeList =
         let separator =
-            skipMany1 (anyOf (charset.TypeLineSeparator)) >>. blankMany
+            skipMany1 (skipAnyOf  "-－―~～") >>. blankMany
 
         skipNewline >>. 
           tuple4
-            (opt (colorIdent charset)
+            (opt colorIdent
               .>> blankMany)
             (supertypeList
               .>> optional skipDotOrBlank)
@@ -234,8 +236,7 @@ module Handmade =
           sepBy subtype (optional skipDotOrBlank)
 
       let typeLine =
-          typeLineTmpl
-            SymbolCharSet.Ja supertypeList cardtypeList subtypeList
+          typeLineTmpl supertypeList cardtypeList subtypeList
 
     /// カード
     let cardSpec: Parser<_> = parse {
@@ -310,8 +311,50 @@ module Handmade =
           manaCost
         run p text
 
+    let test () =
+        let allSuccess p cases =
+            cases
+            |> List.iter (fun (expr, xp) ->
+              let result = run p expr
+              match result with
+              | ParserResult.Success (value, _, _) ->
+                  if xp <> value
+                  then failwithf "WA\r\nexpected = %A\r\nbut result is %A" xp value
+              | ParserResult.Failure (message, _, _) ->
+                  failwithf "Failed parsing:\r\ninput = %s\r\n%s" expr message
+              )
+
+        let ``manaCost`` =
+            let (w, u, b, r, g) =
+                ( ColorManaSymbol White
+                , ColorManaSymbol Blue
+                , ColorManaSymbol Black
+                , ColorManaSymbol Red
+                , ColorManaSymbol Green
+                )
+            let (s, p) =
+                ( SnowManaSymbol
+                , TwoLifeSymbol
+                )
+            let num = NumManaSymbol
+            [ "{1}"                 , [num 1u]
+              "{15}"                , [num 15u]
+              "{W}{U}{B}{R}{G}"     , [w; u; b; r; g]
+              "(白)(青)(黒)(赤)(緑)", [w; u; b; r; g]
+              "{W}{W}{U}"           , [w; w; u]
+              "{W/2}"               , [HalfManaSymbol w]
+              "{X}"                 , [VarManaSymbol "X"]
+              "{S}"                 , [s]
+              "{U/P}"               , [u/p]
+              "{W/U}"               , [w/u]
+              "{2/W}"               , [(num 2u)/w]
+            ] |> allSuccess manaCost
+
+        ()
+
   open System.IO
   let main () =
+      CardSyntaxParser.test ()
       let text = File.ReadAllText (@"D:\Docs\archive\_nobak\__testdata.txt")
       let result =
           CardSyntaxParser.parseCardList text

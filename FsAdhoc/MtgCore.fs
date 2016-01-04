@@ -255,6 +255,7 @@ module Static =
     static member ofCreature name manaCost subtypes ruleText powTou =
         { Spec.ofMinimal (name, ruleText) with
             ManaCost    = manaCost
+            Color       = colorFromManaCost manaCost
             CardType    = Set.singleton Creature
             Subtype     = Set.ofSeq subtypes
             PowTou      = Some powTou
@@ -262,6 +263,7 @@ module Static =
     static member ofPlaneswalker name manaCost subtype ruleText loyalty =
         { Spec.ofMinimal (name, ruleText) with
             ManaCost    = manaCost
+            Color       = colorFromManaCost manaCost
             CardType    = Set.singleton Planeswalker
             Subtype     = Set.singleton subtype
             Loyalty     = Some loyalty

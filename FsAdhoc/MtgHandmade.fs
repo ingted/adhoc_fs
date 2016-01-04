@@ -129,7 +129,7 @@ module Handmade =
 
     // '*' を含む式
     let starExpr =
-        regex @"[0-9XYZ*+ \t-]+"
+        regex @"[0-9XYZ+() \t-]*\*[0-9XYZ+*() \t-]*"
 
     let intOrStarExpr =
         (   (attempt pint32  |>> Some)

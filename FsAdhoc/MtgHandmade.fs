@@ -68,19 +68,6 @@ module Handmade =
   module CardSyntaxParser =
     open Uedai.Utilities.FParsec
 
-    /// カード名
-    /// 日本語/英語
-    let cardName =
-        let content =
-            (   attempt anyInLine
-                |>> (fun ja -> { CardName.Empty with Ja = Some ja })
-            <|> pipe3
-                  anyInLine (skipChar '/') anyInLine
-                  (fun ja slash en -> { Ja = Some ja; En = Some en })
-            )
-
-        betweenParen '《' '》' content
-
     let colorAtomCharFrom (chars) =
         let ps =
           (ColorAtom.Cases, chars)
@@ -225,6 +212,21 @@ module Handmade =
           typeLineTmpl supertypeList cardTypeList subtypeList
 
     module Ja =
+      /// 日本語/英語
+      let cardName =
+          let enName =
+              manyChars (noneOf "/》")
+              |>> Option.ifSat (not << Str.isNullOrEmpty)
+
+          let jaName =
+              opt (
+                skipChar '/'
+                >>. manyChars (noneOf "》")
+                )
+
+          betweenParen '《' '》' 
+            (pipe2 enName jaName (fun en ja -> { En = en; Ja =  ja }))
+
       let supertypeList =
           safeSepBy
             (lookupStrMap Supertype.JaNames Supertype.Cases)

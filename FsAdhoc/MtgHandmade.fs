@@ -113,20 +113,19 @@ module Handmade =
         let separator =
             skipMany1 (skipAnyOf  "-－―~～") >>. blankMany
 
-        skipNewline >>. 
-          tuple4
-            (opt colorIdent
-              .>> blankMany)
-            (supertypeList
-              .>> optional skipDotOrBlank)
-            (cardtypeList
-              .>> blankMany)
-            (opt
-              (separator
-              >>. subtypeList
-              //TODO: rarity
-              .>> blankMany
-              ) |>> Option.getOr [])
+        tuple4
+          (opt colorIdent
+            .>> blankMany)
+          (supertypeList
+            .>> optional skipDotOrBlank)
+          (cardtypeList
+            .>> blankMany)
+          (opt
+            (separator
+            >>. subtypeList
+            //TODO: rarity
+            ) |>> Option.getOr [])
+         .>> blankMany .>> skipNewline
 
     // '*' を含む式
     let starExpr =
@@ -181,13 +180,13 @@ module Handmade =
 
     let ruleTextLines =
         let forbidden =
-            attempt (skip powTou)
-            <|> attempt (skip loyalty)
+            attempt (blankMany >>. skip powTouLoyalty)
             <|> attempt flavorTextKeyword
             <|> skipEmptyLine
 
         let line =
-            notFollowedBy forbidden >>. restOfLine false
+            notFollowedBy forbidden
+            >>. restOfLine false
 
         commentLines
         >>. sepBy line skipNewlineAndCommentLines
@@ -251,13 +250,15 @@ module Handmade =
     /// カード
     let cardSpec: Parser<_> = parse {
         let nl = skipNewlineAndCommentLines
-        let typeLine = attempt En.typeLine <|> Ja.typeLine
+        let typeLineParser =
+            attempt En.typeLine <|> Ja.typeLine
 
-        let! name     = cardName         .>> blankMany .>> optional (attempt nl)
-        let! manaCost = manaCost         .>> blankMany
-        let! typeLine = typeLine         .>> nl
-        let! ruleText = ruleTextLines    .>> nl
-        let! ptl      = powTouLoyalty    .>> nl
+        let! name     = Ja.cardName      .>> blankMany .>> optional (attempt nl)
+        let! manaCost = manaCost         .>> blankMany .>> nl
+        let! typeLine = typeLineParser
+        let! ruleText = ruleTextLines    .>> blankMany
+        let! ptl      = powTouLoyalty
+        do! if ptl.IsSome then blankMany >>. nl else preturn ()
 
         let (colorIdent, supertypes, cardtypes, subtypes) = typeLine
         let colorIdent = colorIdent |> Option.map colorFromAtoms
@@ -391,7 +392,7 @@ module Handmade =
               "[白/青] アーティファクト ― 装備品(Equipment)"
                 , (Some[White; Blue], [], [Artifact], ["装備品"])
             ]
-            |> List.map (fun (expr, r) -> ("\r\n" + expr, r)) 
+            |> List.map (fun (expr, r) -> (expr + "\r\n", r)) 
             |> allSuccess (Ja.typeLine)
             
             [ "Instant"
@@ -404,7 +405,7 @@ module Handmade =
               "[W/U] Artifact~Equipment"
                 , (Some[White; Blue], [], [Artifact], ["Equipment"])
             ]
-            |> List.map (fun (expr, r) -> ("\r\n" + expr, r))
+            |> List.map (fun (expr, r) -> (expr + "\r\n", r))
             |> allSuccess (En.typeLine)
 
             [ """《灰色熊/Grizzly Bear》 (1)(緑)

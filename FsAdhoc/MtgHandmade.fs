@@ -83,7 +83,7 @@ module Handmade =
         let minimal =
             (   (puint32          |>> ManaSymbol.Unspecified)
             <|> (colorAtomChar    |>> ManaSymbol.Monocolored)
-            <|> (skipChar 'C'     >>% ManaSymbol.Colorless)
+            <|> (anyOf "C◇"      >>% ManaSymbol.Colorless)
             <|> (anyOf "PΦ"      >>% ManaSymbol.TwoLife)
             <|> (anyOf "S氷"      >>% ManaSymbol.Snow)
             <|> (anyOf "XYZ"      |>> ManaSymbol.Var)
@@ -415,8 +415,6 @@ module Handmade =
               , let mc = [ManaSymbol.Unspecified 1u; ManaSymbol.Monocolored Green] in
                   RegularCard (Spec.ofCreature "灰色熊/Grizzly Bear" mc ["熊"] "" (2, 2))
             ] |> allSuccess (cardBody)
-
-
         ()
 
   open System.IO

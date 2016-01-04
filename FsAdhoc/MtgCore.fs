@@ -190,7 +190,7 @@ module Core =
         this.ColorPayable.ToColor()
 
   type ManaCost = ManaSymbol list //Bag<ManaSymbol>
-  let colorFromManacost (mc : ManaCost) =
+  let colorFromManaCost (mc : ManaCost) =
       mc |> List.fold (fun clr sym -> clr + sym.Color) colorless
 
   type PhaseSymbol =

@@ -24,8 +24,8 @@ module Handmade =
         | enOpt, jaOpt ->
             (enOpt |> Option.getOr "") + (jaOpt |> Option.getOr "")
 
-  let colorFromManacostOrIdentity (manacost, ciOpt) =
-      ciOpt |> Option.getOr' (lazy colorFromManacost manacost)
+  let colorFromIdentityOrManaCost ciOpt manacost =
+      ciOpt |> Option.getOr' (lazy colorFromManaCost manacost)
 
   [<AutoOpen>]
   module private Detail =
@@ -265,7 +265,7 @@ module Handmade =
         return {
             Name       = string name
             ManaCost   = manaCost
-            Color      = colorFromManacostOrIdentity (manaCost, colorIdent)
+            Color      = colorFromIdentityOrManaCost colorIdent manaCost
             ColorIdent = colorIdent
             Supertype  = Set.ofList supertypes
             CardType   = Set.ofList cardtypes

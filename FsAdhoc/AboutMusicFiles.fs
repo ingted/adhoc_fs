@@ -416,9 +416,9 @@ module AboutMusicFiles =
         | ext ->
             printfn "Unknown ext '%s': File '%s'" ext filePath
 
-    let ChangeTagEncodingAll path =
-        let doneListFile = Path.Combine [| path; "$CTEA_done.txt" |]
-        let errListFile  = Path.Combine [| path; "$CTEA_error.txt" |]
+    let ChangeTagEncodingAll files =
+        let doneListFile = "$CTEA_done.txt"
+        let errListFile  = "$CTEA_error.txt"
         File.AppendAllText (doneListFile, "") // Create if not exists
 
         let doneSet  =
@@ -428,11 +428,10 @@ module AboutMusicFiles =
         let doneCount = ref 0
 
         /// 未処理のファイル
-        let files =
-            Directory.EnumerateFiles (path, "*.m*", SearchOption.AllDirectories)
-            |> Seq.filter (fun fileName -> doneSet.Contains fileName |> not)
         try
-            files |> Seq.iter (fun filePath ->
+            files
+            |> Seq.filter (fun fileName -> doneSet.Contains fileName |> not)
+            |> Seq.iter (fun filePath ->
                 try
                     ChangeTagEncoding filePath
                     doneSet.Add (filePath) |> ignore
@@ -446,6 +445,10 @@ module AboutMusicFiles =
             if errSet.Count <> 0 then
                 File.WriteAllLines (doneListFile, doneSet.ToArray () |> Array.map string)
                 File.WriteAllLines (errListFile,  errSet.ToArray ()  |> Array.map string)
+
+    let ChangeTagEncodingFilesInDir path =
+        Directory.EnumerateFiles (path, "*.m*", SearchOption.AllDirectories)
+        |> ChangeTagEncodingAll
 
     //-------------------------------------------
 
@@ -637,7 +640,9 @@ module AboutMusicFiles =
             ExportWmpLibraryAsText outPath
         | (4, [albumDir]) ->
             RenameAlbumFiles albumDir
+        | (5, []) ->
+            ChangeTagEncodingAll <| Console.ReadLines ()
         | (5, [dir]) ->
-            ChangeTagEncodingAll dir
+            ChangeTagEncodingFilesInDir dir
         | _ ->
             failwith "unsupported mode."

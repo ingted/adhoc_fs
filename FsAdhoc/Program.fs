@@ -9,7 +9,7 @@ open Uedai.Utilities
 
 [<EntryPoint>]
 let main argv =
-    let argv = Console.ReadCommandLine argv
+    let argv = lazy Console.ReadCommandLine argv
 
     MTG.Handmade.main ()
     //AboutMusicFiles.mainMusic argv

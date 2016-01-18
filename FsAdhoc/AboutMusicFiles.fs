@@ -601,7 +601,7 @@ module AboutMusicFiles =
     
     //-------------------------------------------
     ///音楽ファイル関連の処理のエントリーポイント
-    let mainMusic (argv: string []) =
+    let mainMusic (argv: Lazy<string []>) =
         let String_Today = DateTime.Now.ToString("yyyy-MM-dd")
         let Path_RegisteratingMusicFiles = @"D:/Docs/downloads/$musics"
         let Path_SourceMovies = @"D:/NicoCacheData"
@@ -611,6 +611,7 @@ module AboutMusicFiles =
         let FileName_NewlySongsDataJson = Path_Music + "/$newlySongsData.json"
         let FileName_WmpLibText = Path_Music + (sprintf @"/wmplib_bak(%s).txt" String_Today)
 
+        let argv = argv.Value
         let (bSuccess, iMode) =
             if argv.Length >= 1 then
                 Int32.TryParse(argv.[0])

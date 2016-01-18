@@ -413,11 +413,8 @@ module AboutMusicFiles =
             // → WMP に新しい項目として認識されてしまうことがあるので、消すべきでない
             //if hasID3v1 then MP3Infp.RemoveMP3Tag (filePath, MP3Infp.MP3TagType.ID3v1) |> ignore
 
-        | ".m4a" ->
-            let tagInfo = MP3Infp.LoadTag<TagInfo.MP4> filePath
-            tagInfo.SaveUnicode ()
         | ext ->
-            printfn "Unknown ext '%s': File '%s'" ext filePath
+            printfn "Ignored: %s" filePath
 
     let ChangeTagEncodingAll files =
         let doneListFile = "$CTEA_done.txt"

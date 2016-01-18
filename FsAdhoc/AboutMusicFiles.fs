@@ -406,6 +406,9 @@ module AboutMusicFiles =
                 let tiV2 = MP3Infp.LoadTag<TagInfo.MP3_ID3v2> (filePath)
                 tiV2.SaveUnicode ()
 
+            else
+                printfn "No tags: %s" filePath
+
             // ID3v1 を削除
             // → WMP に新しい項目として認識されてしまうことがあるので、消すべきでない
             //if hasID3v1 then MP3Infp.RemoveMP3Tag (filePath, MP3Infp.MP3TagType.ID3v1) |> ignore

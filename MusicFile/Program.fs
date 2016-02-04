@@ -1,214 +1,51 @@
 ﻿namespace MusicFile
 
 open System
-open System.IO
-open System.Text.RegularExpressions
-open System.Linq
-open Microsoft.FSharp
-open Microsoft.FSharp.Reflection
-open System.Reflection
 open System.Collections.Generic
+open System.Text.RegularExpressions
+open System.IO
 
 open Basis.Core
-open System.Runtime.Serialization
-open System.Runtime.Serialization.Json
 open WMPLib
 open iTunesLib
 open Tsukikage.DllPInvoke.MP3Tag    // mp3infp_from_fsharp.dll
 
-open Samples.FSharp.RegexTypeProvider   // Sample.RegexTypeProvider.dll
-
 open Util
 open Util.Collections
+open SongData
 
-module AboutMusicFiles =
-  [<AutoOpen>]
-  module WmpUtil =
-    module Wmp =
-        let private app = WindowsMediaPlayerClass()
-        app.autoStart <- false
+[<AutoOpen>]
+module WmpUtil =
+  module Wmp =
+    let private app = WindowsMediaPlayerClass()
+    app.autoStart <- false
 
-        let Value = app
-        let AllTracks   = lazy app.getAll()
-        let TemporaryPL = lazy app.playlistCollection.getByName("#_").[0]
+    let Value = app
+    let AllTracks   = lazy app.getAll()
+    let TemporaryPL = lazy app.playlistCollection.getByName("#_").[0]
 
-        let DateFormat = "yyyy/MM/dd HH:mm:ss"
+    let DateFormat = "yyyy/MM/dd HH:mm:ss"
 
-    type IWMPPlaylist with
-        member this.ToSeq =
-            seq { for i in 0..(this.count - 1) -> this.Item i }
+  type IWMPPlaylist with
+      member this.ToSeq =
+          seq { for i in 0..(this.count - 1) -> this.Item i }
 
-    type IWMPMedia with
-        member this.Item (attr : string) =
-            this.getItemInfo attr
-        member this.AcquisitionTime =
-            DateTime.Parse (this.["AcquisitionTime"])
-        member this.LastPlayedTime =
-            match this.["UserLastPlayedTime"] with
-            | null | ""
-                -> None
-            | s -> Some (DateTime.Parse(s))
+  type IWMPMedia with
+      member this.Item (attr : string) =
+          this.getItemInfo attr
+      member this.AcquisitionTime =
+          DateTime.Parse (this.["AcquisitionTime"])
+      member this.LastPlayedTime =
+          match this.["UserLastPlayedTime"] with
+          | null | ""
+              -> None
+          | s -> Some (DateTime.Parse(s))
 
-  [<AutoOpen>]
-  module iTunesUtil =
-    let iTunes = lazy new iTunesLib.iTunesAppClass()
+[<AutoOpen>]
+module iTunesUtil =
+  let iTunes = lazy new iTunesLib.iTunesAppClass()
 
-  module Str =
-    /// for ex, change "something(anno)" to "something".
-    let removeFollowingBracket (bracketLeft, bracketRight) str =
-      Regex.Replace(str, "^(.*)" + Regex.Escape(bracketLeft) + ".*" + Regex.Escape(bracketRight) + "$",
-        (fun (m : Match) -> m.Groups.[1].Value))
-
-  /// 歌詞データをファイルから取り出す
-  let internal loadLyricsFromFile fileName =
-    if File.Exists fileName then
-      use file = File.OpenText fileName
-      file.ReadToEnd() |> sprintf "\r\n%s\r\n"
-    else
-      raise(new Exception())
-
-  [<DataContract>]
-  type SongMetadata = {
-      [<field: DataMember(Name="title")>]    Title : string
-      [<field: DataMember(Name="composer")>] Composer : string
-      [<field: DataMember(Name="writer")>]   Writer : string
-      [<field: DataMember(Name="vocal")>]    Vocal : string
-      [<field: DataMember(Name="track")>]    TrackNumber : string
-      [<field: DataMember(Name="release")>]  ReleaseYear : string
-  }
-  type MyLyricsSection = private {
-      Metadata : string
-      Body : string
-      Idx : int
-  }
-
-  let splitLyricsIntoSongBlocks sectionSymbol (lyrics : string) =
-    let splittee = lyrics |> Str.splitBy ("\r\n" + sectionSymbol)
-    [
-      for i, block in splittee.[1..] |> Array.toSeq |> Seq.indexed do
-        let metadata, body =
-            match block.IndexOf "\r\n\r\n" with
-            | p when p >= 0 -> block |> Str.splitAt p
-            | _ -> block, ""
-        yield { Metadata = metadata; Body = body; Idx = i }
-    ]
-
-  /// メタデータテキストからメタデータを個別に取り出す
-  /// 例：「作曲：xxxP\n歌：初音ミク<Sweet>」→ { Composer = "xxxP"; Vocal = "初音ミク" }
-  // todo: 列記されているときに最後の < > しか取り除けていない。
-  let songMetadataFromText =
-    let extract'' albumData (g : Group) getter =
-        if g.Success then g.Value else
-            match albumData with
-            | Some album -> album |> getter
-            | None -> ""
-    let extract' albumData g getter =
-        extract'' albumData g getter |> Str.removeFollowingBracket ("<", ">")
-
-    let extTitle       = new RegexTyped< @"^([^\r]*)">()
-    let extComposer    = new RegexTyped< @"(?:.*?)作曲(?:.*?)：([^\r]*)">()
-    let extWriter      = new RegexTyped< @"(?:.*?)作詞(?:.*?)：([^\r]*)">()
-    let extVocal       = new RegexTyped< @"(?:.*?)歌(?:.*?)：([^\r]*)">()
-    let extTrackNumber = new RegexTyped< @"#([0-9]+)">()
-    let extReleaseYear = new RegexTyped< @"#\(Release:.*?(\d+)">()
-
-    fun (albumData : SongMetadata option) metadataText ->
-        let extract = extract' albumData
-        {
-          Title       = extract (metadataText |> extTitle      .Match)._1 (fun a -> a.Title)
-          Composer    = extract (metadataText |> extComposer   .Match)._1 (fun a -> a.Composer)
-          Writer      = extract (metadataText |> extWriter     .Match)._1 (fun a -> a.Writer)
-          Vocal       = extract (metadataText |> extVocal      .Match)._1 (fun a -> a.Vocal)
-          TrackNumber = extract (metadataText |> extTrackNumber.Match)._1 (fun a -> a.TrackNumber)
-          ReleaseYear = extract (metadataText |> extReleaseYear.Match)._1 (fun a -> a.ReleaseYear)
-        }
-
-  (*
-  // version of using reflection
-  [<Sealed; AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)>]
-  type private ExtractableMetadataAttribute (pattern) =
-      inherit Attribute()
-
-      let reg = new Regex(pattern)
-      member __.Extract input =
-          let m = reg.Match input
-          Option.if' (m.Success && m.Groups.Count >= 1) (fun() -> m.Groups.[1].Value)
-
-  type SongMetadata = private {
-      [<ExtractableMetadata(@"^([^\r]*)")                    >] Title : string
-      [<ExtractableMetadata(@"(?:.*?)作曲(?:.*?)：([^\r]*)") >] Composer : string
-      [<ExtractableMetadata(@"(?:.*?)作詞(?:.*?)：([^\r]*)") >] Writer : string
-      [<ExtractableMetadata(@"(?:.*?)歌(?:.*?)：([^\r]*)")   >] Vocal : string
-      [<ExtractableMetadata(@"#([0-9]+)")                    >] TrackNumber : string
-  }
-  let songMetadataFromText albumData metadataText =
-      let recordFields =
-          Reflection.FSharpType.GetRecordFields (
-              typeof<SongMetadata>, bindingFlags = Reflection.BindingFlags.NonPublic
-          )
-      let fields = [|
-          for field in recordFields do
-              let attr = field.GetCustomAttribute<ExtractableMetadataAttribute>()
-              yield match attr.Extract metadataText with
-                      | Some x -> x :> obj
-                      | None ->
-                          match albumData with
-                          | Some album -> field.GetValue(album)
-                          | None -> "" :> obj
-      |]
-      Reflection.FSharpValue.MakeRecord (
-          typeof<SongMetadata>,
-          fields,
-          bindingFlags = Reflection.BindingFlags.NonPublic
-      ) :?> SongMetadata
-      *)
-
-  /// 歌詞テキストを曲ごとに分解し、そのそれぞれを「メタデータ部分」「歌詞部分」に分解する
-  (*
-      セクション開始記号 sectionSymbol ("＊" か "－") の直後にある空行までがメタデータ部分、残りは歌詞部分
-      (コメント行は除去するべきだが、今回は使わないので気にしない)
-  //*)
-  let internal newSongsDataFromMyLyrics lyrics =
-    let (|AlbumTrack|SingleTrack|) =
-        let reg = new RegexTyped< @"^『(?<albumTitle>.*)』$">()
-        fun title ->
-            let m = reg.Match title
-            if m.albumTitle.Success
-            then AlbumTrack m.albumTitle.Value
-            else SingleTrack title
-
-    let rec f sectionSymbol albumData lyrics =
-        let lyricsSections = lyrics |> splitLyricsIntoSongBlocks sectionSymbol
-        [
-          for lyricsSection in lyricsSections do
-            let metadata = songMetadataFromText albumData (lyricsSection.Metadata)
-            match metadata.Title with
-            | SingleTrack title ->
-                match albumData with
-                | Some album -> yield { metadata with TrackNumber = string (lyricsSection.Idx + 1) }
-                | None -> yield metadata
-            | AlbumTrack title ->
-                yield! lyricsSection.Body |> f "－"  (Some metadata)
-        ]
-
-    lyrics |> f "＊" None
-
-  // 歌詞ファイルから曲メタデータを取得
-  let internal loadSongDataFromLyrics lyricsPath =
-    lyricsPath |> loadLyricsFromFile |> newSongsDataFromMyLyrics
-
-  /// 曲データ配列の入出力
-  // F# の list<> は serialize できない。
-  let saveSongsData path (songsData : SongMetadata list) =
-    assert (path |> Path.GetExtension |> Str.toLower |> (=) ".json")
-    IO.File.WriteAllText(path, Serialize.serializeJson(songsData |> List.toArray), Text.Encoding.UTF8)
-
-  let loadSongsData path =
-    assert (path |> Path.GetExtension |> Str.toLower |> (=) ".json")
-    IO.File.ReadAllText (path, Text.Encoding.UTF8) |> Serialize.deserializeJson<SongMetadata[]> |> Array.toList
-
-  //-------------------------------------------
-
+module MusicFile =
   // 歌詞ファイルから曲メタデータを取得し、保存する
   let LoadAndSaveSongDataFromLyrics lyricsPath savedPath =
     let songsData = loadSongDataFromLyrics lyricsPath
@@ -307,25 +144,25 @@ module AboutMusicFiles =
     let warnTooLongAttr songData =
         let album = albumAttr songData
         if songData.Title.Length >= 15 then
-            printfn "Maybe 「%s」's title is too long." songData.Title
+          printfn "Maybe 「%s」's title is too long." songData.Title
         if album.Length >= 15 then
-            printfn "Maybe album name 「%s」 is too long." album
+          printfn "Maybe album name 「%s」 is too long." album
 
     let commitTag songData fileName =
         let album = albumAttr songData
         try
-            dispatch songData fileName
-            warnTooLongAttr songData
-            renameFileToTitle (songData.Title) fileName
+          dispatch songData fileName
+          warnTooLongAttr songData
+          renameFileToTitle (songData.Title) fileName
 
         with
-            // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
-            | :? IO.FileNotFoundException as e ->
-                printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
-            | :? MP3Infp.Mp3infpException as e ->
-                printfn "Error while MP3 tag editting:\r\nfileName: %s\r\nmsg: %s" fileName (e.Message)
-            | e ->
-                printfn "Unknown error: %s" (e.Message)
+        // mp3infp.dll の関数が ANSI なので、ファイルパスに変な文字が含まれていると失敗することがある
+        | :? IO.FileNotFoundException as e ->
+            printfn "Unfound file is skipped:\n\tfilename: %s\nsongdata = %A" fileName songData
+        | :? MP3Infp.Mp3infpException as e ->
+            printfn "Error while MP3 tag editting:\r\nfileName: %s\r\nmsg: %s" fileName (e.Message)
+        | e ->
+            printfn "Unknown error: %s" (e.Message)
 
     List.iter (fun songData ->
         fileNames
@@ -421,18 +258,18 @@ module AboutMusicFiles =
       |> Seq.filter (fun fileName -> doneSet.Contains fileName |> not)
       |> Seq.iter (fun filePath ->
           try
-              ChangeTagEncoding filePath
-              doneSet.Add (filePath) |> ignore
-              doneCount |> Ref.inc
+            ChangeTagEncoding filePath
+            doneSet.Add (filePath) |> ignore
+            doneCount |> Ref.inc
           with
-              | _ -> errSet.Add (filePath) |> ignore
+          | _ -> errSet.Add (filePath) |> ignore
           )
     finally
       printfn "%d files processed successfully." (!doneCount)
       printfn "%d errors reported." (errSet.Count)
       if errSet.Count <> 0 then
-          File.WriteAllLines (doneListFile, doneSet.ToArray () |> Array.map string)
-          File.WriteAllLines (errListFile,  errSet.ToArray ()  |> Array.map string)
+        File.WriteAllLines (doneListFile, doneSet |> Seq.toArray |> Array.map string)
+        File.WriteAllLines (errListFile,  errSet  |> Seq.toArray |> Array.map string)
 
   let ChangeTagEncodingFilesInDir path =
     Directory.EnumerateFiles (path, "*.m*", SearchOption.AllDirectories)
@@ -535,7 +372,7 @@ module AboutMusicFiles =
               |> Path.GetFileName
               |> Str.subTo 2 |> Int32.TryParse |> Option.trialResult
               |> Option.bind (fun num ->
-                  Option.if' (1 <= num && num <= titles.Count()) (fun() ->
+                  Option.if' (1 <= num && num <= Array.length titles) (fun() ->
                       (num, titles.[num - 1])
                       ))
               |> Option.map (fun (num, title) ->
@@ -581,7 +418,9 @@ module AboutMusicFiles =
 
         Console.WriteLine ("add file " + wmpTrack.sourceURL)
 
-  //-------------------------------------------
+//-------------------------------------------
+[<AutoOpen>]
+module Config =
   let String_Today = DateTime.Now.ToString("yyyy-MM-dd")
   let Path_RegisteratingMusicFiles = @"D:/Docs/downloads/$musics"
   let Path_SourceMovies = @"D:/NicoCacheData"
@@ -590,6 +429,9 @@ module AboutMusicFiles =
   let FileName_NewlyRegisteredSongNames = Path_Music + @"/newly_registered_songs.txt"
   let FileName_NewlySongsDataJson = Path_Music + "/$newlySongsData.json"
   let FileName_WmpLibText = Path_Music + (sprintf @"/wmplib_bak(%s).txt" String_Today)
+
+module Main =
+  open MusicFile
 
   [<EntryPoint>]
   let main argv =

@@ -49,11 +49,12 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <None Include="packages.config" />
     <None Include="app.config" />
     <Compile Include="Misc.fs" />
     <Compile Include="Collections.fs" />
     <Compile Include="Console.fs" />
+    <None Include="packages.config" />
+    <Compile Include="Serialize.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Basis.Core">
@@ -67,6 +68,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>

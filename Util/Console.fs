@@ -6,11 +6,12 @@ module Console =
   // Too simple command line parser
   let ReadCommandLine argv =
     if argv |> Array.length > 0
-    then argv
+    then lazy argv
     else
-      printfn "Input command line. Just use space-separated arguments:"
-      let commandLine = Console.ReadLine()
-      commandLine.Split ([|' '|], StringSplitOptions.RemoveEmptyEntries)
+      lazy
+        printfn "Input command line. Just use space-separated arguments:"
+        let commandLine = Console.ReadLine()
+        commandLine.Split ([|' '|], StringSplitOptions.RemoveEmptyEntries)
 
   let rec ReadYesNo () =
     match Console.ReadLine() with

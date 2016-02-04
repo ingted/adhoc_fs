@@ -61,9 +61,11 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="packages.config" />
+    <Compile Include="MtgCore.fs" />
+    <Compile Include="MtgHandmade.fs" />
+    <Compile Include="MtgScript.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Util\Util.fsproj">

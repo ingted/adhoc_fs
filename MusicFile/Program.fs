@@ -327,32 +327,31 @@ module MusicFile =
 
   //-------------------------------------------
 
-  /// wmp ライブラリのデータをテキストファイルに出力する
+  /// wmp ライブラリのデータをテキスト形式で出力する
   (*
       完全にインポートできる形式ではない
   *)
-  let ExportWmpLibraryAsText dstFileName =
-    let buf = new Text.StringBuilder()
+  let ExportWmpLibraryAsText () =
+    Wmp.AllTracks.Value.ToSeq
+    |> Seq.choose (fun track ->
+        let (succeeded, playCount), playCountStr =
+            let s = track.["UserPlayCount"]
+            Int32.TryParse s, s
 
-    for i in 0..(Wmp.AllTracks.Value.count - 1) do
-      let track = Wmp.AllTracks.Value.[i]
-      let (succeeded, playCount), playCountStr =
-          let s = track.["UserPlayCount"]
-          Int32.TryParse s, s
-
-      if playCount > 0 then
-        buf.AppendLine
-            ([|
+        Option.if' (playCount > 0) (fun () -> 
+            [
               track.name
               track.sourceURL
               playCountStr
               track.["AcquistionTime"]
               track.["UserLastPlayedTime"]
-            |] |> Str.join "\t")
-            |> ignore
+            ] |> Str.join "\t"
+            )
+      )
 
-    let text = buf.ToString()
-    File.WriteAllText(dstFileName, text)
+  let ExportWmpLibraryAsTextToFile dstFileName =
+    let lines = ExportWmpLibraryAsText ()
+    File.WriteAllLines(dstFileName, lines)
 
   //-------------------------------------------
   let RenameAlbumFiles dir =
@@ -466,7 +465,7 @@ module Main =
         MakePlaylistOfNewlyRegisteredSongs jsonPath
         //MakePlaylistOfNewlyRegisteredSongs FileName_NewlySongsDataJson
     | (3, [outPath]) ->
-        ExportWmpLibraryAsText outPath
+        ExportWmpLibraryAsTextToFile outPath
     | (4, [albumDir]) ->
         RenameAlbumFiles albumDir
     | (5, []) ->

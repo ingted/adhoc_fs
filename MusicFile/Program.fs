@@ -338,16 +338,20 @@ module MusicFile =
             let s = track.["UserPlayCount"]
             Int32.TryParse s, s
 
-        Option.if' (playCount > 0) (fun () -> 
-            [
-              track.name
-              track.sourceURL
-              playCountStr
-              track.["AcquistionTime"]
-              track.["UserLastPlayedTime"]
-            ] |> Str.join "\t"
-            )
+        Option.if' (playCount > 0) (fun () ->
+          async {
+            return
+              [
+                track.name
+                track.sourceURL
+                playCountStr
+                track.["AcquistionTime"]
+                track.["UserLastPlayedTime"]
+              ] |> Str.join "\t"
+          })
       )
+    |> Async.Parallel
+    |> Async.RunSynchronously
 
   let ExportWmpLibraryAsTextToFile dstFileName =
     let lines = ExportWmpLibraryAsText ()

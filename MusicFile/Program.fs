@@ -371,19 +371,21 @@ module MusicFile =
               fileName
               |> Path.GetFileName
               |> Str.subTo 2 |> Int32.TryParse |> Option.trialResult
-              |> Option.bind (fun num ->
-                  Option.if' (1 <= num && num <= Array.length titles) (fun() ->
-                      (num, titles.[num - 1])
-                      ))
-              |> Option.map (fun (num, title) ->
+              |> Option.filter (fun num ->
+                  1 <= num && num <= Array.length titles
+                  )
+              |> Option.map (fun num ->
+                  let title = titles.[num - 1]
                   let tagInfo = MP3Infp.LoadTag (fileName)
                   let ext = Path.GetExtension(fileName)
                   let destFilePath =
                       Path.Combine(dir,
                         (Str.format "{0:D2} " [num] + title + ext)
                         )
-                  printfn "%s:\n  移動 %s\n  タイトル変更 %s -> %s" fileName destFilePath tagInfo.Title title
-                  (fun() -> 
+                  printfn "%s:\n  移動 %s\n  タイトル変更 %s -> %s"
+                    fileName destFilePath
+                    tagInfo.Title title
+                  (fun () -> 
                       tagInfo.TrackNumber <- string num
                       tagInfo.Title <- title
                       tagInfo.SaveUnicode()

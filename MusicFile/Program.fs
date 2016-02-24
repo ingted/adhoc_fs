@@ -366,6 +366,7 @@ module MusicFile =
       printfn "以下のトランザクションを実行してよいですか？ (y/n)"
       let transactions =
           Directory.GetFiles(dir, "*.mp3")
+          |> Array.append (Directory.GetFiles(dir, "*.m4a"))
           |> Array.choose (fun fileName ->
               fileName
               |> Path.GetFileName
@@ -377,10 +378,11 @@ module MusicFile =
               |> Option.map (fun (num, title) ->
                   let tagInfo = MP3Infp.LoadTag (fileName)
                   assert (tagInfo.TrackNumber = string num)
+                  let ext = Path.GetExtension(fileName)
                   let destFilePath =
                       Path.Combine(dir,
-                          (Str.format "{0:D2}" [num]) + " " + title + ".mp3"
-                          )
+                        (Str.format "{0:D2} " [num] + title + ext)
+                        )
                   printfn "%s:\n  移動 %s\n  タイトル変更 %s -> %s" fileName destFilePath tagInfo.Title title
                   (fun() -> 
                       tagInfo.Title <- title

@@ -359,13 +359,9 @@ module MusicFile =
 
   //-------------------------------------------
   let RenameAlbumFiles dir =
-      let titlesFilePath = Path.Combine [| dir; "titles.txt" |]
       let titles =
-          if File.Exists titlesFilePath then
-            File.ReadAllLines (titlesFilePath)
-          else
-            printfn "タイトルのリストを入力してください。(#1 から)"
-            Console.ReadLines() |> Array.ofSeq
+          printfn "タイトルのリストを入力してください。(#1 から)"
+          Console.ReadLines() |> Array.ofSeq
 
       printfn "以下のトランザクションを実行してよいですか？ (y/n)"
       let transactions =

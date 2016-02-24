@@ -377,7 +377,6 @@ module MusicFile =
                       ))
               |> Option.map (fun (num, title) ->
                   let tagInfo = MP3Infp.LoadTag (fileName)
-                  assert (tagInfo.TrackNumber = string num)
                   let ext = Path.GetExtension(fileName)
                   let destFilePath =
                       Path.Combine(dir,
@@ -385,6 +384,7 @@ module MusicFile =
                         )
                   printfn "%s:\n  移動 %s\n  タイトル変更 %s -> %s" fileName destFilePath tagInfo.Title title
                   (fun() -> 
+                      tagInfo.TrackNumber <- string num
                       tagInfo.Title <- title
                       tagInfo.SaveUnicode()
                       File.Move(Path.Combine(dir, fileName), destFilePath)

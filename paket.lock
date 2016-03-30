@@ -1,1 +1,8 @@
-
+NUGET
+  remote: https://www.nuget.org/api/v2
+  specs:
+    FSharp.Configuration (0.5.12)
+    FsYaml (2.0.1)
+      FSharp.Configuration (>= 0.4.10)
+      YamlDotNet (>= 3.5.1)
+    YamlDotNet (3.8.0)

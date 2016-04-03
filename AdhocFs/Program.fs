@@ -1,40 +1,27 @@
 ﻿open System
 open FsYaml
 
-//(*
-type Node<'T> =
-  {
-    Value   : 'T
-    Node    : list<Node<'T>>
-  }
-(* )
-
-type Node =
-  {
-    Value : int
-    Node : list<Node>
-  }
-  //*)
+type Node<'T> =  { Value: 'T; Node: list<Node<'T>> }
+let node = { Value = 1; Node = [ { Value = 2; Node = [] } ] }
+let yaml = Yaml.dump(node)
+(*
+&424836916 Node:
+- Node: []
+  &284240186 Value: 2
+Value: 1
+*)
 
 [<EntryPoint>]
 let main argv =
 
-  let node =
-    {
-      Value = 1
-      Node =
-        [
-          {
-            Value = 2
-            Node = []
-          }
-        ]
-    }
 
-  let s = Yaml.dump(node)
-  printfn "%s" s
-
-  let n = Yaml.tryLoad<Node<int>> s
+  // &数字.. を除去したもの
+  let yaml = """
+Node:
+- Node: []
+  Value: 2
+Value: 1
+"""
 
   // exit code
   0

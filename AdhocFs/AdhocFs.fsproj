@@ -11,8 +11,9 @@
     <AssemblyName>AdhocFs</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>AdhocFs</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -44,6 +45,8 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>

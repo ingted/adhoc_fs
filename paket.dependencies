@@ -1,1 +1,8 @@
 source https://www.nuget.org/api/v2
+
+nuget EntityFramework
+nuget System.Data.SQLite
+nuget System.Data.SQLite.Core
+nuget System.Data.SQLite.EF6
+nuget System.Data.SQLite.Linq
+nuget SQLite.CodeFirst

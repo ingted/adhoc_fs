@@ -9,6 +9,13 @@ module Option =
     | Some x -> x
     | None -> x
 
+  /// Returns Some x if the given x is NOT null; otherwise None.
+  /// Unlike Optino.ofObj, you can apply this to values of an type for which F# doesn't allow null.
+  let ofObj' (x: 'x) =
+    if box x = null
+    then None
+    else Some x
+
 module Program =
   let insertSample (ctx: DbCtx) =
     use transaction = ctx.Database.BeginTransaction()
@@ -36,7 +43,7 @@ module Program =
 
   let findSample (ctx: DbCtx) userName =
     let userOpt =
-      (ctx |> DbContext.set<User>).FirstOrDefault(fun user -> user.Name = userName) |> Option.ofObj
+      (ctx |> DbContext.set<User>).FirstOrDefault(fun user -> user.Name = userName) |> Option.ofObj'
       //ctx |> DbContext.tryFind<User> (fun user -> user.Name = userName)
     match userOpt with
     | Some user -> printUser user
@@ -49,8 +56,9 @@ module Program =
   [<EntryPoint>]
   let main argv = 
     withDb (fun ctx ->
-      //insertSample ctx
+      insertSample ctx
       findSample ctx "vain0"
+      findSample ctx "vain0x"
       printUsers ctx
       )
 

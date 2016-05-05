@@ -4,7 +4,6 @@ open System.ComponentModel.DataAnnotations
 
 [<AutoOpen>]
 module Types =
-  [<AllowNullLiteral>]
   type User(name: string) =
     let mutable id = 0
 

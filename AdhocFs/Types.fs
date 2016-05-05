@@ -12,4 +12,4 @@ module Types =
 
     member val Id           = 0                 with get, set
     member val Name         = name              with get, set
-    member val Profile      = (null: string)    with get, set
+    member val Profile      = (None: option<string>)    with get, set

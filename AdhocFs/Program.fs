@@ -3,6 +3,12 @@ namespace AdhocFs
 open System
 open System.Linq
 
+module Option =
+  let getOr x =
+    function
+    | Some x -> x
+    | None -> x
+
 module Program =
   let insertSample (ctx: DbCtx) =
     use transaction = ctx.Database.BeginTransaction()
@@ -10,7 +16,7 @@ module Program =
       let users =
         [
           User("vain0")
-          User("ue_dai", Profile = "My subaccount")
+          User("ue_dai", Profile = Some "My subaccount")
         ]
       let users2 = ctx.Set<User>().AddRange(users)
       ctx.SaveChanges() |> ignore
@@ -26,7 +32,7 @@ module Program =
       printfn "#%02d '%s': %s"
         user.Id
         user.Name
-        (if user.Profile = null then "no profile" else user.Profile)
+        (user.Profile |> Option.getOr "no profile")
 
   let findSample (ctx: DbCtx) userName =
     let userOpt =

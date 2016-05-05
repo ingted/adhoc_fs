@@ -1,6 +1,8 @@
 ﻿namespace AdhocFs
 
+open System
 open System.Data.Entity
+open System.Linq
 open SQLite.CodeFirst
 
 module Database =

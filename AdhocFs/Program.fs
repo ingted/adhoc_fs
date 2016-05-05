@@ -31,6 +31,7 @@ module Program =
   let findSample (ctx: DbCtx) userName =
     let userOpt =
       ctx.Set<User>().FirstOrDefault(fun user -> user.Name = userName) |> Option.ofObj
+      //ctx |> DbContext.tryFind<User> (fun user -> user.Name = userName)
     match userOpt with
     | Some user -> printUser user
     | None -> printfn "%s" "No user found."

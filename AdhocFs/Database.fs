@@ -30,3 +30,6 @@ module DbContext =
   let tryFind<'t when 't: null and 't: not struct> pred (ctx: DbCtx) =
     let (_: bool) = if true then true else pred (failwith "")
     ctx.Set<'t>().FirstOrDefault(pred) |> Option.ofObj
+
+  let set<'t when 't: not struct> (ctx: DbCtx) =
+    ctx.Set<'t>()

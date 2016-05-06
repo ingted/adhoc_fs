@@ -12,6 +12,7 @@ module Database =
     override this.OnModelCreating(mb: DbModelBuilder) =
       // configure tables
       mb.Entity<User>() |> ignore
+      mb.Entity<Tweet>() |> ignore
 
       Database.SetInitializer(SampleDbInitializer(mb))
 

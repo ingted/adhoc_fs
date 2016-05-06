@@ -21,12 +21,21 @@ module Program =
     use transaction = ctx.Database.BeginTransaction()
     try
       let users =
-        [
+        [|
           User("vain0")
           User("ue_dai", Profile = Some "My subaccount")
-        ]
+        |]
       let users2 = ctx.Set<User>().AddRange(users)
       ctx.SaveChanges() |> ignore
+
+      let tweets =
+        [|
+          Tweet(users.[0].Id, "first tweet")
+          Tweet(users.[0].Id, "second tweet")
+        |]
+      ctx.Set<Tweet>().AddRange(tweets) |> ignore
+      ctx.SaveChanges() |> ignore
+
       //transaction.Rollback()
       transaction.Commit()
       ()
@@ -49,6 +58,15 @@ module Program =
     | Some user -> printUser user
     | None -> printfn "%s" "No user found."
 
+  let querySample (ctx: DbCtx) =
+    query {
+      for tweet in ctx.Set<Tweet>() do
+      join user in ctx.Set<User>() on (tweet.UserId = user.Id)
+      select (user, tweet)
+    }
+    |> Seq.toArray
+    |> Array.iter (fun (user, tweet) -> printfn "@%s: %s" user.Name tweet.Content)
+
   let printUsers (ctx: DbCtx) =
     for user in ctx.Set<User>() do
       printUser user
@@ -57,8 +75,9 @@ module Program =
   let main argv = 
     withDb (fun ctx ->
       insertSample ctx
-      findSample ctx "vain0"
-      findSample ctx "vain0x"
+      //findSample ctx "vain0"
+      //findSample ctx "vain0x"
+      querySample ctx
       printUsers ctx
       )
 

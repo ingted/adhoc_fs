@@ -1,4 +1,4 @@
-﻿namespace AdhocFs.AssemblyInfo
+﻿namespace ProjectRenamer.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices
@@ -7,11 +7,11 @@ open System.Runtime.InteropServices
 // アセンブリに関する一般情報は、以下の属性セットによって
 // 制御されます。アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更します。
-[<assembly: AssemblyTitle("AdhocFs")>]
+[<assembly: AssemblyTitle("ProjectRenamer")>]
 [<assembly: AssemblyDescription("")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("Microsoft")>]
-[<assembly: AssemblyProduct("AdhocFs")>]
+[<assembly: AssemblyProduct("ProjectRenamer")>]
 [<assembly: AssemblyCopyright("Copyright © Microsoft 2016")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]
@@ -25,12 +25,12 @@ open System.Runtime.InteropServices
 [<assembly: Guid("ec6f59ac-7bba-4492-859f-c24601eb5be3")>]
 
 // アセンブリのバージョン情報は、以下の 4 つの値で構成されます。:
-// 
+//
 //       メジャー バージョン
-//       マイナー バージョン 
+//       マイナー バージョン
 //       ビルド番号
 //       リビジョン
-// 
+//
 // すべての値を指定するか、下に示すように '*' を使用してビルドおよびリビジョン番号を
 // 既定値にすることができます。:
 // [<assembly: AssemblyVersion("1.0.*")>]

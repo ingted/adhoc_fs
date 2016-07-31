@@ -17,6 +17,80 @@ module Util =
       if content <> content' then
         File.WriteAllText(path, content')
 
+  [<RequireQualifiedAccess>]
+  module Undo =
+    type UndoFunction =
+      {
+        Do      : list<unit -> unit>
+        Undo    : list<unit -> unit>
+      }
+    with
+      static member Empty =
+        {
+          Do    = []
+          Undo  = []
+        }
+
+      static member Singleton(f, g) =
+        {
+          Do    = [f]
+          Undo  = [g]
+        }
+
+      member this.Append(u) =
+        {
+          Do    = this.Do @ u.Do
+          Undo  = u.Undo @ this.Undo
+        }
+
+    [<RequireQualifiedAccess>]
+    type State =
+      | Do
+      | Undo
+      | Accumulate
+
+    type UndoBuilder() =
+      member this.Return(x) =
+        (x, UndoFunction.Empty, State.Do)
+        
+      member this.Zero() =
+        ((), UndoFunction.Empty, State.Accumulate)
+
+      member this.Bind((x, u: UndoFunction, state), f) =
+        match state with
+        | State.Do | State.Undo ->
+          (x, u, state)
+        | State.Accumulate ->
+          let (x', u', state') = f x
+          in (x', u.Append(u'), state')
+
+      member this.Run(f) =
+        let (x, u, state) = f ()
+        match state with
+        | State.Do ->
+          for f in u.Do do f ()
+        | State.Undo ->
+          for f in u.Undo do f ()
+        | State.Accumulate -> ()
+        x
+
+      member this.Delay(f) = f
+
+    let ``do`` =
+      ((), UndoFunction.Empty, State.Do)
+
+    let undo =
+      ((), UndoFunction.Empty, State.Undo)
+
+  module Syntax =
+    let undo = Undo.UndoBuilder()
+
+    let f =
+      undo {
+        do! Undo.undo
+        return ()
+      }
+
 module Program =
   open System
   open System.IO
